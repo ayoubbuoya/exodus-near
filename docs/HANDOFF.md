@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Steps 1 through 5 completed (`exodus-math`, `mock-lst`, and `market` contract tokenization/index/YT interest/maturity all passing). Ready for Step 6 (`market` contract: AMM PT swaps + liquidity).
+- **Phase:** Steps 1 through 6 completed (`exodus-math`, `mock-lst`, and `market` contract tokenization/index/YT interest/maturity/AMM PT swaps and liquidity all passing). Ready for Step 7 (Deploy demo + LiNEAR market on testnet, seed liquidity).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
@@ -59,7 +59,7 @@ P0 first, always. Each step has a "done when".
 | 3 | `scripts/reference_math.py` + `exodus-math` crate (fixed point, ln/exp, interest, market math) | Rust matches Python vectors (Done) |
 | 4 | MockLST contract | Sandbox test: rate only goes up, faucet works (Done) |
 | 5 | Market: tokenization + index + YT interest + maturity (F1 to F4) | Sandbox lifecycle test without AMM passes |
-| 6 | Market: AMM PT swaps + liquidity (F5, F6) | Sandbox swap tests pass, gas recorded |
+| 6 | Market: AMM PT swaps + liquidity (F5, F6) | Sandbox swap tests pass, gas recorded (Done) |
 | 7 | Deploy demo + LiNEAR market on testnet, seed liquidity | View calls work on testnet |
 | 8 | Backend: keeper, indexer, API | Keeper refreshes, history endpoint returns data |
 | 9 | Frontend: markets, market page (Fix, Pool, Mint/Redeem), portfolio | Round trip from UI on testnet |
@@ -124,6 +124,7 @@ Environment variables (planned):
 | 6 Nov 2026 | Ayoub + Claude | Docs written: overview, SPEC, TECH_architecture, HANDOFF | Step 1 and 2 |
 | 6 Nov 2026 | Ayoub + Buoya | Step 3 (`exodus-math`) and Step 4 (`mock-lst` contract + sandbox tests) complete | Step 5 (`market` contract) |
 | 6 Nov 2026 | Ayoub + Buoya | Step 5 (`market` contract: tokenization F1, index F2, YT interest F3, maturity F4 + sandbox lifecycle tests) complete | Step 6 (`market` AMM: PT swaps + liquidity) |
+| 6 Nov 2026 | Ayoub + Buoya | Step 6 (`market` AMM: PT swaps F5, liquidity F6, 256-bit sqrt, previews, NEP-297 events, sandbox integration test) complete | Step 7 (Deploy demo + LiNEAR market on testnet, seed liquidity) |
 
 ---
 

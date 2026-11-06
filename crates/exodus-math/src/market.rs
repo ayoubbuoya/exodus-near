@@ -2,10 +2,11 @@
 //!
 //! Handles logit curve pricing, dynamic anchor adjustment, and PT/SY swaps.
 
-use crate::fixed_point::{fp_div, fp_mul, FP_ONE, FP_ONE_I128, YEAR_SECONDS};
+use crate::fixed_point::{fp_div, fp_mul, mul_div_down, sqrt_mul_u128, FP_ONE, FP_ONE_I128, YEAR_SECONDS};
 use crate::log_exp::{fp_exp, fp_ln};
 
 pub const MAX_P_RATIO: u128 = 960_000_000_000_000_000; // 0.96 * 1e18
+pub const MINIMUM_LIQUIDITY: u128 = 1000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MathError {
@@ -143,7 +144,7 @@ pub fn calc_swap_pt(
         (fp_div((-d_pt) as u128, pre_fee_er)) as i128
     };
 
-    let fee_exp = (config.ln_fee_rate_root * (tau as i128)) / (YEAR_SECONDS as i128);
+    let fee_exp = -(config.ln_fee_rate_root.abs() * (tau as i128)) / (YEAR_SECONDS as i128);
     let fee_rate = fp_exp(fee_exp); // 18-decimal fraction <= 1.0
 
     let fee_asset = if d_pt > 0 {
@@ -259,6 +260,61 @@ pub fn binary_search_sy_for_pt(
     }
 }
 
+/// Computes LP tokens minted for the first deposit:
+/// total_lp = sqrt(pt * sy)
+/// user_lp = total_lp - MINIMUM_LIQUIDITY (where MINIMUM_LIQUIDITY is locked).
+pub fn calc_initial_lp(pt_amount: u128, sy_amount: u128) -> Result<u128, MathError> {
+    if pt_amount == 0 || sy_amount == 0 {
+        return Err(MathError::InsufficientLiquidity);
+    }
+    let total_lp = sqrt_mul_u128(pt_amount, sy_amount);
+    if total_lp <= MINIMUM_LIQUIDITY {
+        return Err(MathError::InsufficientLiquidity);
+    }
+    Ok(total_lp - MINIMUM_LIQUIDITY)
+}
+
+/// Computes proportional liquidity deposit:
+/// Given desired PT, deposited SY, and current pool reserves.
+/// Returns (lp_minted, pt_used, sy_used).
+pub fn calc_add_liquidity_proportional(
+    total_pt: u128,
+    total_sy: u128,
+    total_lp: u128,
+    pt_desired: u128,
+    sy_in: u128,
+) -> Result<(u128, u128, u128), MathError> {
+    if total_pt == 0 || total_sy == 0 || total_lp == 0 {
+        return Err(MathError::InvalidReserves);
+    }
+    let sy_optimal = mul_div_down(pt_desired, total_sy, total_pt).ok_or(MathError::InvalidReserves)?;
+    if sy_optimal <= sy_in {
+        let lp_minted = mul_div_down(pt_desired, total_lp, total_pt).ok_or(MathError::InvalidReserves)?;
+        Ok((lp_minted, pt_desired, sy_optimal))
+    } else {
+        let pt_optimal = mul_div_down(sy_in, total_pt, total_sy).ok_or(MathError::InvalidReserves)?;
+        let lp_minted = mul_div_down(sy_in, total_lp, total_sy).ok_or(MathError::InvalidReserves)?;
+        Ok((lp_minted, pt_optimal, sy_in))
+    }
+}
+
+/// Computes pro-rata PT and SY returned when burning LP:
+/// pt_out = (lp_burn * total_pt) / total_lp
+/// sy_out = (lp_burn * total_sy) / total_lp
+pub fn calc_remove_liquidity(
+    total_pt: u128,
+    total_sy: u128,
+    total_lp: u128,
+    lp_burn: u128,
+) -> Result<(u128, u128), MathError> {
+    if total_lp == 0 || lp_burn == 0 {
+        return Err(MathError::InsufficientLiquidity);
+    }
+    let pt_out = mul_div_down(lp_burn, total_pt, total_lp).ok_or(MathError::InvalidReserves)?;
+    let sy_out = mul_div_down(lp_burn, total_sy, total_lp).ok_or(MathError::InvalidReserves)?;
+    Ok((pt_out, sy_out))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -271,5 +327,36 @@ mod tests {
         let tau = 90 * 86400;
         let scalar = calc_rate_scalar(scalar_root, tau).unwrap();
         assert_eq!(scalar / FP_ONE, 40);
+    }
+
+    #[test]
+    fn test_liquidity_math_lifecycle() {
+        let initial_pt = 100_000_000_000;
+        let initial_sy = 100_000_000_000;
+        let lp_initial = calc_initial_lp(initial_pt, initial_sy).unwrap();
+        assert_eq!(lp_initial, 100_000_000_000 - MINIMUM_LIQUIDITY);
+
+        let total_lp = 100_000_000_000;
+        // Subsequent proportional deposit: deposit 50 PT and 60 SY -> consumes 50 PT and 50 SY
+        let (lp_minted, pt_used, sy_used) = calc_add_liquidity_proportional(
+            initial_pt,
+            initial_sy,
+            total_lp,
+            50_000_000_000,
+            60_000_000_000,
+        ).unwrap();
+        assert_eq!(pt_used, 50_000_000_000);
+        assert_eq!(sy_used, 50_000_000_000);
+        assert_eq!(lp_minted, 50_000_000_000);
+
+        // Pro-rata withdrawal: withdraw 50 LP
+        let (pt_out, sy_out) = calc_remove_liquidity(
+            initial_pt + pt_used,
+            initial_sy + sy_used,
+            total_lp + lp_minted,
+            lp_minted,
+        ).unwrap();
+        assert_eq!(pt_out, 50_000_000_000);
+        assert_eq!(sy_out, 50_000_000_000);
     }
 }

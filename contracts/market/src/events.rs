@@ -74,3 +74,31 @@ pub fn emit_unpaused(account_id: &AccountId) {
         account_id
     ));
 }
+
+pub fn emit_swap(
+    account_id: &AccountId,
+    kind: &str,
+    amount_in: u128,
+    amount_out: u128,
+    fee_sy: u128,
+    py_index: u128,
+) {
+    env::log_str(&format!(
+        "EVENT_JSON:{{\"standard\":\"exodus\",\"version\":\"1.0.0\",\"event\":\"swap\",\"data\":[{{\"account_id\":\"{}\",\"kind\":\"{}\",\"amount_in\":\"{}\",\"amount_out\":\"{}\",\"fee_sy\":\"{}\",\"py_index\":\"{}\"}}]}}",
+        account_id, kind, amount_in, amount_out, fee_sy, py_index
+    ));
+}
+
+pub fn emit_add_liquidity(account_id: &AccountId, pt_in: u128, sy_in: u128, lp_out: u128) {
+    env::log_str(&format!(
+        "EVENT_JSON:{{\"standard\":\"exodus\",\"version\":\"1.0.0\",\"event\":\"add_liquidity\",\"data\":[{{\"account_id\":\"{}\",\"pt_in\":\"{}\",\"sy_in\":\"{}\",\"lp_out\":\"{}\"}}]}}",
+        account_id, pt_in, sy_in, lp_out
+    ));
+}
+
+pub fn emit_remove_liquidity(account_id: &AccountId, lp_in: u128, pt_out: u128, sy_out: u128) {
+    env::log_str(&format!(
+        "EVENT_JSON:{{\"standard\":\"exodus\",\"version\":\"1.0.0\",\"event\":\"remove_liquidity\",\"data\":[{{\"account_id\":\"{}\",\"lp_in\":\"{}\",\"pt_out\":\"{}\",\"sy_out\":\"{}\"}}]}}",
+        account_id, lp_in, pt_out, sy_out
+    ));
+}

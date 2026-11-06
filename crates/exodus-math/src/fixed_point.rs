@@ -7,6 +7,68 @@ pub const FP_ONE: u128 = 1_000_000_000_000_000_000;
 pub const FP_ONE_I128: i128 = 1_000_000_000_000_000_000;
 pub const YEAR_SECONDS: u64 = 31_536_000; // 365 days in seconds
 
+/// Multiplies two u128 values producing a 256-bit result as (hi, lo).
+pub fn mul_u256(a: u128, b: u128) -> (u128, u128) {
+    let a_lo = a as u64 as u128;
+    let a_hi = a >> 64;
+    let b_lo = b as u64 as u128;
+    let b_hi = b >> 64;
+
+    let p0 = a_lo * b_lo;
+    let p1 = a_lo * b_hi;
+    let p2 = a_hi * b_lo;
+    let p3 = a_hi * b_hi;
+
+    let mid = p1 + (p0 >> 64);
+    let mid_lo = (mid as u64 as u128) + p2;
+    let carry = (mid >> 64) + (mid_lo >> 64);
+
+    let res_lo = ((mid_lo as u64 as u128) << 64) | (p0 as u64 as u128);
+    let res_hi = p3 + carry;
+    (res_hi, res_lo)
+}
+
+/// Computes floor(sqrt(a * b)) for two u128 values with exact 256-bit precision.
+pub fn sqrt_mul_u128(a: u128, b: u128) -> u128 {
+    if a == 0 || b == 0 {
+        return 0;
+    }
+    let (hi, lo) = mul_u256(a, b);
+
+    let lz = if hi == 0 {
+        128 + lo.leading_zeros()
+    } else {
+        hi.leading_zeros()
+    };
+
+    let max_bits = (256 - lz + 1) / 2;
+    let mut high = if max_bits >= 128 {
+        u128::MAX
+    } else {
+        1u128 << max_bits
+    };
+    let mut low = 1u128;
+    let mut ans = 0u128;
+
+    while low <= high {
+        let mid = low + (high - low) / 2;
+        let (m_hi, m_lo) = mul_u256(mid, mid);
+        if (m_hi, m_lo) <= (hi, lo) {
+            ans = mid;
+            if mid == u128::MAX {
+                break;
+            }
+            low = mid + 1;
+        } else {
+            if mid == 0 {
+                break;
+            }
+            high = mid - 1;
+        }
+    }
+    ans
+}
+
 /// Computes (a * b) / c with 256-bit intermediate precision, rounding down.
 pub fn mul_div_down(a: u128, b: u128, c: u128) -> Option<u128> {
     if c == 0 {
@@ -206,5 +268,15 @@ mod tests {
         let x = 12345678901234567890u128;
         assert_eq!(fp_mul(x, FP_ONE), x);
         assert_eq!(fp_div(x, FP_ONE), x);
+    }
+
+    #[test]
+    fn test_sqrt_mul_u128() {
+        assert_eq!(sqrt_mul_u128(0, 100), 0);
+        assert_eq!(sqrt_mul_u128(16, 25), 20);
+        assert_eq!(sqrt_mul_u128(2, 2), 2);
+        assert_eq!(sqrt_mul_u128(2, 3), 2);
+        let large = 100_000_000_000_000_000_000_000_000u128; // 100 * 10^24
+        assert_eq!(sqrt_mul_u128(large, large), large);
     }
 }

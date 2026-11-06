@@ -35,6 +35,18 @@ pub const DEFAULT_INTEREST_FEE_BPS: u16 = 300;
 /// Maximum allowed interest fee: 1000 bps (10.0%).
 pub const MAX_INTEREST_FEE_BPS: u16 = 1000;
 
+/// Default AMM scalar root: 10 * 1e18 (fixed point).
+pub const DEFAULT_SCALAR_ROOT: u128 = 10_000_000_000_000_000_000;
+
+/// Default AMM initial anchor: 1.02 * 1e18 (~8% implied APY).
+pub const DEFAULT_INITIAL_ANCHOR: u128 = 1_020_000_000_000_000_000;
+
+/// Default AMM fee rate root: ln(1.001) in 1e18 fixed point (~0.1% annualized fee).
+pub const DEFAULT_LN_FEE_RATE_ROOT: i128 = 999_500_333_083_417;
+
+/// Default AMM reserve fee: 2000 bps (20.0% of trade fees to treasury).
+pub const DEFAULT_RESERVE_FEE_BPS: u16 = 2000;
+
 /// Gas allocated for outbound ft_transfer call.
 pub const GAS_FOR_FT_TRANSFER: Gas = Gas::from_tgas(20);
 
@@ -93,6 +105,10 @@ pub struct MarketView {
     pub yt_total_supply: U128,
     pub sy_reserved_for_interest: U128,
     pub treasury_sy: U128,
+    pub total_pt: U128,
+    pub total_sy: U128,
+    pub total_lp: U128,
+    pub last_ln_implied_rate: String,
 }
 
 #[near(serializers = [borsh, json])]
@@ -103,6 +119,26 @@ pub struct UserPositionView {
     pub user_index: U128,
     pub accrued_sy: U128,
     pub pending_refund: U128,
+    pub lp_balance: U128,
+}
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SwapPreviewView {
+    pub amount_out: U128,
+    pub fee_sy: U128,
+    pub new_last_ln_implied_rate: String,
+}
+
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PoolView {
+    pub total_pt: U128,
+    pub total_sy: U128,
+    pub total_lp: U128,
+    pub last_ln_implied_rate: String,
+    pub scalar_root: U128,
+    pub ln_fee_rate_root: String,
 }
 
 #[ext_contract(ext_lst)]
@@ -146,14 +182,14 @@ pub struct Market {
     pub yt_total_supply: u128,
     pub user_interest: LookupMap<AccountId, UserInterest>,
 
-    // AMM placeholders for Step 6
+    // AMM state
     pub total_pt: u128,
     pub total_sy: u128,
     pub total_lp: u128,
     pub lp_balances: LookupMap<AccountId, u128>,
     pub last_ln_implied_rate: i128,
-    pub scalar_root: i128,
-    pub initial_anchor: i128,
+    pub scalar_root: u128,
+    pub initial_anchor: u128,
     pub ln_fee_rate_root: i128,
     pub reserve_fee_bps: u16,
     pub tvl_cap_sy: u128,
@@ -177,6 +213,10 @@ impl Market {
         pt_symbol: String,
         initial_index: U128,
         interest_fee_bps: Option<u16>,
+        scalar_root: Option<U128>,
+        initial_anchor: Option<U128>,
+        ln_fee_rate_root: Option<String>,
+        reserve_fee_bps: Option<u16>,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         require!(expiry_ns > env::block_timestamp(), "Expiry must be in the future");
@@ -184,6 +224,13 @@ impl Market {
 
         let fee_bps = interest_fee_bps.unwrap_or(DEFAULT_INTEREST_FEE_BPS);
         require!(fee_bps <= MAX_INTEREST_FEE_BPS, "Interest fee exceeds max allowed");
+
+        let s_root = scalar_root.map(|s| s.0).unwrap_or(DEFAULT_SCALAR_ROOT);
+        let init_anchor = initial_anchor.map(|a| a.0).unwrap_or(DEFAULT_INITIAL_ANCHOR);
+        let fee_root = ln_fee_rate_root
+            .map(|r| r.parse::<i128>().expect("Invalid ln_fee_rate_root"))
+            .unwrap_or(DEFAULT_LN_FEE_RATE_ROOT);
+        let res_fee = reserve_fee_bps.unwrap_or(DEFAULT_RESERVE_FEE_BPS);
 
         let metadata = FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
@@ -221,10 +268,10 @@ impl Market {
             total_lp: 0,
             lp_balances: LookupMap::new(StorageKey::LpBalances),
             last_ln_implied_rate: 0,
-            scalar_root: 0,
-            initial_anchor: 0,
-            ln_fee_rate_root: 0,
-            reserve_fee_bps: 2000,
+            scalar_root: s_root,
+            initial_anchor: init_anchor,
+            ln_fee_rate_root: fee_root,
+            reserve_fee_bps: res_fee,
             tvl_cap_sy: 0,
 
             sy_reserved_for_interest: 0,
@@ -387,6 +434,108 @@ impl Market {
         events::emit_redeem_pt(&caller, amount_burn, sy_out, self.py_index);
 
         // 4. Dispatch LST transfer
+        self.internal_transfer_sy_out(caller, sy_out)
+    }
+
+    /// Sells exact PT for LST using the Pendle V2 logit curve.
+    #[payable]
+    pub fn swap_exact_pt_for_sy(&mut self, pt_in: U128, min_sy_out: U128) -> Promise {
+        assert_one_yocto();
+        let caller = env::predecessor_account_id();
+        let pt_amount = pt_in.0;
+        require!(pt_amount > 0, "pt_in must be positive");
+        require!(!self.paused, "Market is paused");
+        require!(
+            self.index_epoch == env::epoch_height(),
+            "INDEX_STALE: call refresh_index"
+        );
+        let now_ns = env::block_timestamp();
+        require!(
+            now_ns < self.expiry_ns,
+            "Market has reached maturity"
+        );
+        require!(self.total_lp > 0, "No liquidity in pool");
+
+        let pt_bal = self.pt.ft_balance_of(caller.clone()).0;
+        require!(pt_bal >= pt_amount, "Insufficient PT balance");
+
+        let now_secs = now_ns / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        // User sells PT: d_pt is negative
+        let res = exodus_math::calc_swap_pt(
+            &config,
+            &reserves,
+            -(pt_amount as i128),
+            self.py_index,
+            now_secs,
+        ).expect("swap execution failed");
+
+        let sy_out = res.net_sy_to_user as u128;
+        require!(sy_out >= min_sy_out.0, "Slippage: sy_out below min_sy_out");
+
+        // Deduct PT from caller
+        self.pt.internal_withdraw(&caller, pt_amount);
+
+        // Update pool reserves
+        self.total_pt = res.new_total_pt;
+        self.total_sy = res.new_total_sy;
+        self.last_ln_implied_rate = res.new_last_ln_implied_rate;
+        self.treasury_sy = self.treasury_sy.saturating_add(res.fee_sy_to_reserve);
+
+        events::emit_swap(&caller, "pt_sell", pt_amount, sy_out, res.fee_sy_to_reserve, self.py_index);
+
+        self.internal_transfer_sy_out(caller, sy_out)
+    }
+
+    /// Removes liquidity pro-rata and receives PT + SY.
+    /// Can be called even when paused or after maturity (user exit guarantee).
+    #[payable]
+    pub fn remove_liquidity(&mut self, lp: U128, min_pt_out: U128, min_sy_out: U128) -> Promise {
+        assert_one_yocto();
+        let caller = env::predecessor_account_id();
+        let lp_burn = lp.0;
+        require!(lp_burn > 0, "lp must be positive");
+
+        let user_lp = self.lp_balances.get(&caller).copied().unwrap_or(0);
+        require!(user_lp >= lp_burn, "Insufficient LP balance");
+
+        let (pt_out, sy_out) = exodus_math::calc_remove_liquidity(
+            self.total_pt,
+            self.total_sy,
+            self.total_lp,
+            lp_burn,
+        ).expect("remove liquidity calculation failed");
+
+        require!(pt_out >= min_pt_out.0, "Slippage: pt_out below min_pt_out");
+        require!(sy_out >= min_sy_out.0, "Slippage: sy_out below min_sy_out");
+
+        // Deduct LP from user & total
+        self.lp_balances.insert(caller.clone(), user_lp - lp_burn);
+        self.total_lp = self.total_lp.saturating_sub(lp_burn);
+        self.total_pt = self.total_pt.saturating_sub(pt_out);
+        self.total_sy = self.total_sy.saturating_sub(sy_out);
+
+        // Auto-register PT for caller if needed
+        if !self.pt.accounts.contains_key(&caller) {
+            self.pt.internal_register_account(&caller);
+        }
+        self.pt.internal_deposit(&caller, pt_out);
+
+        events::emit_remove_liquidity(&caller, lp_burn, pt_out, sy_out);
+
         self.internal_transfer_sy_out(caller, sy_out)
     }
 
@@ -569,6 +718,21 @@ impl Market {
             yt_total_supply: U128(self.yt_total_supply),
             sy_reserved_for_interest: U128(self.sy_reserved_for_interest),
             treasury_sy: U128(self.treasury_sy),
+            total_pt: U128(self.total_pt),
+            total_sy: U128(self.total_sy),
+            total_lp: U128(self.total_lp),
+            last_ln_implied_rate: self.last_ln_implied_rate.to_string(),
+        }
+    }
+
+    pub fn get_pool(&self) -> PoolView {
+        PoolView {
+            total_pt: U128(self.total_pt),
+            total_sy: U128(self.total_sy),
+            total_lp: U128(self.total_lp),
+            last_ln_implied_rate: self.last_ln_implied_rate.to_string(),
+            scalar_root: U128(self.scalar_root),
+            ln_fee_rate_root: self.ln_fee_rate_root.to_string(),
         }
     }
 
@@ -577,6 +741,7 @@ impl Market {
         let yt_balance = self.yt_balances.get(&account_id).copied().unwrap_or(0);
         let interest = self.user_interest.get(&account_id).cloned().unwrap_or_default();
         let pending = self.pending_refunds.get(&account_id).copied().unwrap_or(0);
+        let lp_balance = self.lp_balances.get(&account_id).copied().unwrap_or(0);
 
         UserPositionView {
             pt_balance,
@@ -584,6 +749,93 @@ impl Market {
             user_index: U128(interest.user_index),
             accrued_sy: U128(interest.accrued_sy),
             pending_refund: U128(pending),
+            lp_balance: U128(lp_balance),
+        }
+    }
+
+    pub fn lp_balance_of(&self, account_id: AccountId) -> U128 {
+        U128(self.lp_balances.get(&account_id).copied().unwrap_or(0))
+    }
+
+    pub fn preview_swap_exact_sy_for_pt(&self, sy_in: U128) -> SwapPreviewView {
+        let sy_amount = sy_in.0;
+        require!(sy_amount > 0, "sy_in must be positive");
+        require!(self.total_lp > 0, "No liquidity in pool");
+        let now_secs = env::block_timestamp() / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        require!(now_secs < expiry_secs, "Market has expired");
+
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        let pt_out = exodus_math::binary_search_sy_for_pt(
+            &config,
+            &reserves,
+            sy_amount,
+            self.py_index,
+            now_secs,
+            None,
+        ).expect("binary search failed");
+
+        let res = exodus_math::calc_swap_pt(
+            &config,
+            &reserves,
+            pt_out as i128,
+            self.py_index,
+            now_secs,
+        ).expect("preview calc failed");
+
+        SwapPreviewView {
+            amount_out: U128(pt_out),
+            fee_sy: U128(res.fee_sy_to_reserve),
+            new_last_ln_implied_rate: res.new_last_ln_implied_rate.to_string(),
+        }
+    }
+
+    pub fn preview_swap_exact_pt_for_sy(&self, pt_in: U128) -> SwapPreviewView {
+        let pt_amount = pt_in.0;
+        require!(pt_amount > 0, "pt_in must be positive");
+        require!(self.total_lp > 0, "No liquidity in pool");
+        let now_secs = env::block_timestamp() / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        require!(now_secs < expiry_secs, "Market has expired");
+
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        let res = exodus_math::calc_swap_pt(
+            &config,
+            &reserves,
+            -(pt_amount as i128),
+            self.py_index,
+            now_secs,
+        ).expect("preview calc failed");
+
+        let sy_out = res.net_sy_to_user as u128;
+        SwapPreviewView {
+            amount_out: U128(sy_out),
+            fee_sy: U128(res.fee_sy_to_reserve),
+            new_last_ln_implied_rate: res.new_last_ln_implied_rate.to_string(),
         }
     }
 
@@ -605,9 +857,19 @@ impl Market {
 // -----------------------------------------------------------------------------
 
 #[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-struct MintPyMsg {
-    action: String,
+#[serde(crate = "near_sdk::serde", tag = "action")]
+pub enum TransferMsg {
+    #[serde(rename = "mint_py")]
+    MintPy,
+    #[serde(rename = "swap_exact_sy_for_pt")]
+    SwapExactSyForPt {
+        min_pt_out: U128,
+    },
+    #[serde(rename = "add_liquidity")]
+    AddLiquidity {
+        pt_desired: U128,
+        min_lp_out: U128,
+    },
 }
 
 #[near]
@@ -624,9 +886,9 @@ impl FungibleTokenReceiver for Market {
             "Only configured LST is accepted"
         );
 
-        let parsed: Result<MintPyMsg, _> = near_sdk::serde_json::from_str(&msg);
+        let parsed: Result<TransferMsg, _> = near_sdk::serde_json::from_str(&msg);
         match parsed {
-            Ok(MintPyMsg { action }) if action == "mint_py" => {
+            Ok(TransferMsg::MintPy) => {
                 require!(!self.paused, "Market is paused");
                 require!(
                     self.index_epoch == env::epoch_height(),
@@ -661,6 +923,177 @@ impl FungibleTokenReceiver for Market {
 
                 // Return 0: all LST retained
                 PromiseOrValue::Value(U128(0))
+            }
+            Ok(TransferMsg::SwapExactSyForPt { min_pt_out }) => {
+                require!(!self.paused, "Market is paused");
+                require!(
+                    self.index_epoch == env::epoch_height(),
+                    "INDEX_STALE: call refresh_index"
+                );
+                let now_ns = env::block_timestamp();
+                require!(
+                    now_ns < self.expiry_ns,
+                    "Market has reached maturity"
+                );
+                require!(self.total_lp > 0, "No liquidity in pool");
+
+                let now_secs = now_ns / 1_000_000_000;
+                let expiry_secs = self.expiry_ns / 1_000_000_000;
+
+                let config = exodus_math::MarketAmmConfig {
+                    scalar_root: self.scalar_root,
+                    initial_anchor: self.initial_anchor,
+                    ln_fee_rate_root: self.ln_fee_rate_root,
+                    reserve_fee_bps: self.reserve_fee_bps as u32,
+                    expiry: expiry_secs,
+                };
+                let reserves = exodus_math::MarketReserves {
+                    total_pt: self.total_pt,
+                    total_sy: self.total_sy,
+                    last_ln_implied_rate: self.last_ln_implied_rate,
+                };
+
+                let sy_in = amount.0;
+                let pt_out = match exodus_math::binary_search_sy_for_pt(
+                    &config,
+                    &reserves,
+                    sy_in,
+                    self.py_index,
+                    now_secs,
+                    None,
+                ) {
+                    Ok(out) => out,
+                    Err(_) => return PromiseOrValue::Value(amount),
+                };
+
+                if pt_out < min_pt_out.0 || pt_out > self.total_pt {
+                    // Slippage limit not met or insufficient pool PT: refund
+                    return PromiseOrValue::Value(amount);
+                }
+
+                let swap_res = match exodus_math::calc_swap_pt(
+                    &config,
+                    &reserves,
+                    pt_out as i128,
+                    self.py_index,
+                    now_secs,
+                ) {
+                    Ok(res) => res,
+                    Err(_) => return PromiseOrValue::Value(amount),
+                };
+
+                // Update pool reserves
+                self.total_pt = swap_res.new_total_pt;
+                self.total_sy = swap_res.new_total_sy;
+                self.last_ln_implied_rate = swap_res.new_last_ln_implied_rate;
+                self.treasury_sy = self.treasury_sy.saturating_add(swap_res.fee_sy_to_reserve);
+
+                // Credit PT to sender
+                if !self.pt.accounts.contains_key(&sender_id) {
+                    self.pt.internal_register_account(&sender_id);
+                }
+                self.pt.internal_deposit(&sender_id, pt_out);
+
+                events::emit_swap(
+                    &sender_id,
+                    "pt_buy",
+                    sy_in,
+                    pt_out,
+                    swap_res.fee_sy_to_reserve,
+                    self.py_index,
+                );
+
+                PromiseOrValue::Value(U128(0))
+            }
+            Ok(TransferMsg::AddLiquidity { pt_desired, min_lp_out }) => {
+                require!(!self.paused, "Market is paused");
+                require!(
+                    self.index_epoch == env::epoch_height(),
+                    "INDEX_STALE: call refresh_index"
+                );
+                let now_ns = env::block_timestamp();
+                require!(
+                    now_ns < self.expiry_ns,
+                    "Market has reached maturity"
+                );
+
+                let sy_in = amount.0;
+                let pt_bal = self.pt.ft_balance_of(sender_id.clone()).0;
+
+                if self.total_lp == 0 {
+                    // Initial liquidity deposit
+                    let pt_used = pt_desired.0;
+                    let sy_used = sy_in;
+
+                    if pt_bal < pt_used {
+                        return PromiseOrValue::Value(amount);
+                    }
+
+                    let lp_minted = match exodus_math::calc_initial_lp(pt_used, sy_used) {
+                        Ok(lp) => lp,
+                        Err(_) => return PromiseOrValue::Value(amount),
+                    };
+
+                    if lp_minted < min_lp_out.0 {
+                        return PromiseOrValue::Value(amount);
+                    }
+
+                    // Withdraw PT from sender
+                    self.pt.internal_withdraw(&sender_id, pt_used);
+
+                    // Initialize reserves
+                    self.total_pt = pt_used;
+                    self.total_sy = sy_used;
+                    self.total_lp = lp_minted.saturating_add(exodus_math::MINIMUM_LIQUIDITY);
+
+                    // Initialize implied rate from anchor if not set
+                    let now_secs = now_ns / 1_000_000_000;
+                    let expiry_secs = self.expiry_ns / 1_000_000_000;
+                    let tau = expiry_secs.saturating_sub(now_secs);
+                    if tau > 0 && self.initial_anchor > 0 {
+                        let ln_anchor = exodus_math::fp_ln(self.initial_anchor);
+                        self.last_ln_implied_rate = (ln_anchor * (exodus_math::YEAR_SECONDS as i128)) / (tau as i128);
+                    }
+
+                    let cur_lp = self.lp_balances.get(&sender_id).copied().unwrap_or(0);
+                    self.lp_balances.insert(sender_id.clone(), cur_lp.saturating_add(lp_minted));
+
+                    events::emit_add_liquidity(&sender_id, pt_used, sy_used, lp_minted);
+
+                    PromiseOrValue::Value(U128(0))
+                } else {
+                    // Subsequent proportional deposit
+                    let (lp_minted, pt_used, sy_used) = match exodus_math::calc_add_liquidity_proportional(
+                        self.total_pt,
+                        self.total_sy,
+                        self.total_lp,
+                        pt_desired.0,
+                        sy_in,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => return PromiseOrValue::Value(amount),
+                    };
+
+                    if lp_minted < min_lp_out.0 || pt_bal < pt_used {
+                        return PromiseOrValue::Value(amount);
+                    }
+
+                    // Withdraw PT from sender
+                    self.pt.internal_withdraw(&sender_id, pt_used);
+
+                    // Update reserves
+                    self.total_pt = self.total_pt.saturating_add(pt_used);
+                    self.total_sy = self.total_sy.saturating_add(sy_used);
+                    self.total_lp = self.total_lp.saturating_add(lp_minted);
+
+                    let cur_lp = self.lp_balances.get(&sender_id).copied().unwrap_or(0);
+                    self.lp_balances.insert(sender_id.clone(), cur_lp.saturating_add(lp_minted));
+
+                    events::emit_add_liquidity(&sender_id, pt_used, sy_used, lp_minted);
+
+                    let unused_sy = sy_in.saturating_sub(sy_used);
+                    PromiseOrValue::Value(U128(unused_sy))
+                }
             }
             _ => {
                 // Unknown action or invalid message: refund full amount
@@ -801,6 +1234,10 @@ mod tests {
             "PT-MOCK".to_string(),
             U128(ONE_INDEX),
             Some(DEFAULT_INTEREST_FEE_BPS),
+            None,
+            None,
+            None,
+            None,
         )
     }
 
@@ -920,5 +1357,71 @@ mod tests {
 
         assert_eq!(market.yt_balance_of(alice()).0, 60 * ONE_LST);
         assert_eq!(market.yt_balance_of(bob()).0, 40 * ONE_LST);
+    }
+
+    #[test]
+    fn test_amm_add_liquidity_swap_and_remove() {
+        // Expiry 90 days in future: 1_000_000_000 + 90 * 86400 * 1_000_000_000
+        let expiry_ns = 1_000_000_000 + 90 * 86_400 * 1_000_000_000;
+        let mut market = init_market(expiry_ns);
+
+        // 1. Alice mints 200 PT + YT
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let _ = market.ft_on_transfer(
+            alice(),
+            U128(200 * ONE_LST),
+            "{\"action\":\"mint_py\"}".to_string(),
+        );
+
+        // 2. Alice adds initial liquidity: 100 PT and 100 LST
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let init_lp_res = market.ft_on_transfer(
+            alice(),
+            U128(100 * ONE_LST),
+            "{\"action\":\"add_liquidity\",\"pt_desired\":\"100000000000000000000000000\",\"min_lp_out\":\"1000\"}".to_string(),
+        );
+        match init_lp_res {
+            PromiseOrValue::Value(v) => assert_eq!(v.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+
+        let pool = market.get_pool();
+        assert_eq!(pool.total_pt.0, 100 * ONE_LST);
+        assert_eq!(pool.total_sy.0, 100 * ONE_LST);
+        assert_eq!(pool.total_lp.0, 100 * ONE_LST);
+        assert_eq!(market.lp_balance_of(alice()).0, 100 * ONE_LST - 1000);
+
+        // 3. Preview swap 10 LST for PT
+        let preview = market.preview_swap_exact_sy_for_pt(U128(10 * ONE_LST));
+        assert!(preview.amount_out.0 > 0);
+
+        // 4. Bob buys PT with 10 LST
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let buy_res = market.ft_on_transfer(
+            bob(),
+            U128(10 * ONE_LST),
+            "{\"action\":\"swap_exact_sy_for_pt\",\"min_pt_out\":\"1000\"}".to_string(),
+        );
+        match buy_res {
+            PromiseOrValue::Value(v) => assert_eq!(v.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+        let bob_pt = market.ft_balance_of(bob()).0;
+        assert_eq!(bob_pt, preview.amount_out.0);
+
+        // 5. Bob previews and sells 5 PT for LST
+        let sell_preview = market.preview_swap_exact_pt_for_sy(U128(5 * ONE_LST));
+        assert!(sell_preview.amount_out.0 > 0);
+
+        set_context(bob(), 1, 1_000_000_000, 1);
+        let _sell_promise = market.swap_exact_pt_for_sy(U128(5 * ONE_LST), U128(1000));
+        assert_eq!(market.ft_balance_of(bob()).0, bob_pt - 5 * ONE_LST);
+
+        // 6. Alice removes half of her LP
+        let alice_lp = market.lp_balance_of(alice()).0;
+        let remove_lp_amount = alice_lp / 2;
+        set_context(alice(), 1, 1_000_000_000, 1);
+        let _remove_promise = market.remove_liquidity(U128(remove_lp_amount), U128(1000), U128(1000));
+        assert_eq!(market.lp_balance_of(alice()).0, alice_lp - remove_lp_amount);
     }
 }

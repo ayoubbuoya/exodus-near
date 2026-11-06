@@ -40,6 +40,10 @@ mod tests {
         "bob.testnet".parse().unwrap()
     }
 
+    fn carol() -> AccountId {
+        "carol.testnet".parse().unwrap()
+    }
+
     fn set_caller(caller: AccountId, timestamp_ns: u64, deposit_yocto: u128) {
         set_caller_with_epoch(caller, timestamp_ns, deposit_yocto, 1);
     }
@@ -207,6 +211,10 @@ mod tests {
             "PT-MOCK-7D".to_string(),
             U128(ONE_INDEX),
             Some(DEFAULT_INTEREST_FEE_BPS),
+            None,
+            None,
+            None,
+            None,
         );
 
         let market_view = market.get_market();
@@ -321,6 +329,10 @@ mod tests {
             "PT-MOCK-7D".to_string(),
             U128(ONE_INDEX),
             Some(DEFAULT_INTEREST_FEE_BPS),
+            None,
+            None,
+            None,
+            None,
         );
 
         // Advance epoch from 100 to 101 without refresh_index
@@ -330,5 +342,178 @@ mod tests {
             U128(100 * ONE_LST),
             "{\"action\":\"mint_py\"}".to_string(),
         );
+    }
+
+    /// Step 6 AMM PT Swaps & Liquidity Integration Test:
+    /// Validates F5 (PT Swaps) and F6 (Liquidity Provision) on NEAR Sandbox.
+    #[test]
+    fn test_market_step6_amm_lifecycle() {
+        let current_time_ns = 1_700_000_000_000_000_000u64;
+        let tau_secs = 90 * 86_400u64;
+        let expiry_ns = current_time_ns + tau_secs * 1_000_000_000;
+        let current_epoch = 200u64;
+
+        // --- 1. Deploy Market Contract ---
+        set_market_caller(owner(), current_time_ns, 0, current_epoch);
+        let mut market = Market::new(
+            owner(),
+            treasury(),
+            contract_id(),
+            RateSource::Mock,
+            expiry_ns,
+            "PT Mock LST 90D".to_string(),
+            "PT-MOCK-90D".to_string(),
+            U128(ONE_INDEX),
+            Some(DEFAULT_INTEREST_FEE_BPS),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        // --- 2. Alice Mints 300 PT + 300 YT ---
+        set_market_caller(contract_id(), current_time_ns, 0, current_epoch);
+        let mint_res = market.ft_on_transfer(
+            alice(),
+            U128(300 * ONE_LST),
+            "{\"action\":\"mint_py\"}".to_string(),
+        );
+        match mint_res {
+            PromiseOrValue::Value(unused) => assert_eq!(unused.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+        assert_eq!(market.ft_balance_of(alice()).0, 300 * ONE_LST);
+
+        // --- 3. Alice Seeds Initial Pool Liquidity (100 PT + 100 MockLST) ---
+        set_market_caller(contract_id(), current_time_ns, 0, current_epoch);
+        let seed_msg = format!(
+            "{{\"action\":\"add_liquidity\",\"pt_desired\":\"{}\",\"min_lp_out\":\"1000\"}}",
+            100 * ONE_LST
+        );
+        let add_res = market.ft_on_transfer(alice(), U128(100 * ONE_LST), seed_msg);
+        match add_res {
+            PromiseOrValue::Value(unused) => assert_eq!(unused.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+
+        let pool_after_seed = market.get_pool();
+        assert_eq!(pool_after_seed.total_pt.0, 100 * ONE_LST);
+        assert_eq!(pool_after_seed.total_sy.0, 100 * ONE_LST);
+        assert_eq!(pool_after_seed.total_lp.0, 100 * ONE_LST);
+
+        // Alice receives initial LP = sqrt(100*100) - 1000 = 100*ONE_LST - 1000
+        let alice_initial_lp = market.lp_balance_of(alice()).0;
+        assert_eq!(alice_initial_lp, 100 * ONE_LST - 1000);
+        assert_eq!(market.ft_balance_of(alice()).0, 200 * ONE_LST); // 300 - 100
+
+        // --- 4. Bob Buys PT with 10 MockLST (swap_exact_sy_for_pt) ---
+        // 4a. Check Preview
+        let preview_buy = market.preview_swap_exact_sy_for_pt(U128(10 * ONE_LST));
+        assert!(preview_buy.amount_out.0 > 0);
+        assert!(preview_buy.fee_sy.0 > 0);
+
+        // 4b. Execute swap
+        set_market_caller(contract_id(), current_time_ns, 0, current_epoch);
+        let swap_buy_msg = format!(
+            "{{\"action\":\"swap_exact_sy_for_pt\",\"min_pt_out\":\"{}\"}}",
+            preview_buy.amount_out.0
+        );
+        let swap_res = market.ft_on_transfer(bob(), U128(10 * ONE_LST), swap_buy_msg);
+        match swap_res {
+            PromiseOrValue::Value(unused) => assert_eq!(unused.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+
+        // Bob's received PT exactly matches preview
+        let bob_pt_balance = market.ft_balance_of(bob()).0;
+        assert_eq!(bob_pt_balance, preview_buy.amount_out.0);
+
+        // Pool PT decreased by exact amount Bob received
+        let pool_after_buy = market.get_pool();
+        assert_eq!(
+            pool_after_buy.total_pt.0,
+            pool_after_seed.total_pt.0 - bob_pt_balance
+        );
+
+        // --- 5. Bob Sells 5 PT for MockLST (swap_exact_pt_for_sy) ---
+        let sell_pt_amount = 5 * ONE_LST;
+        assert!(bob_pt_balance >= sell_pt_amount);
+
+        // 5a. Check Preview
+        let preview_sell = market.preview_swap_exact_pt_for_sy(U128(sell_pt_amount));
+        assert!(preview_sell.amount_out.0 > 0);
+
+        // 5b. Execute sell
+        set_market_caller(bob(), current_time_ns, 1, current_epoch);
+        let _sell_promise = market.swap_exact_pt_for_sy(
+            U128(sell_pt_amount),
+            preview_sell.amount_out,
+        );
+
+        assert_eq!(
+            market.ft_balance_of(bob()).0,
+            bob_pt_balance - sell_pt_amount
+        );
+
+        let pool_after_sell = market.get_pool();
+        assert_eq!(
+            pool_after_sell.total_pt.0,
+            pool_after_buy.total_pt.0 + sell_pt_amount
+        );
+
+        // --- 6. Carol Adds Subsequent Proportional Liquidity ---
+        // Carol mints 100 PT + YT first
+        set_market_caller(contract_id(), current_time_ns, 0, current_epoch);
+        let _ = market.ft_on_transfer(
+            carol(),
+            U128(100 * ONE_LST),
+            "{\"action\":\"mint_py\"}".to_string(),
+        );
+
+        // Carol deposits 50 PT desired and 60 MockLST
+        let carol_pt_desired = 50 * ONE_LST;
+        let carol_sy_offered = 60 * ONE_LST;
+        set_market_caller(contract_id(), current_time_ns, 0, current_epoch);
+        let carol_add_msg = format!(
+            "{{\"action\":\"add_liquidity\",\"pt_desired\":\"{}\",\"min_lp_out\":\"1000\"}}",
+            carol_pt_desired
+        );
+        let carol_add_res = market.ft_on_transfer(
+            carol(),
+            U128(carol_sy_offered),
+            carol_add_msg,
+        );
+
+        // Proportional matching: unused MockLST is refunded to Carol
+        let carol_unused_sy = match carol_add_res {
+            PromiseOrValue::Value(unused) => unused.0,
+            _ => panic!("Expected Value(unused)"),
+        };
+        assert!(carol_unused_sy > 0, "Proportional liquidity returned excess SY");
+        assert!(market.lp_balance_of(carol()).0 > 0);
+
+        // --- 7. Alice Removes Half Her Liquidity (remove_liquidity) ---
+        let alice_lp_to_remove = alice_initial_lp / 2;
+        let pool_before_remove = market.get_pool();
+
+        set_market_caller(alice(), current_time_ns, 1, current_epoch);
+        let _remove_promise = market.remove_liquidity(
+            U128(alice_lp_to_remove),
+            U128(1),
+            U128(1),
+        );
+
+        assert_eq!(
+            market.lp_balance_of(alice()).0,
+            alice_initial_lp - alice_lp_to_remove
+        );
+
+        let pool_after_remove = market.get_pool();
+        assert_eq!(
+            pool_after_remove.total_lp.0,
+            pool_before_remove.total_lp.0 - alice_lp_to_remove
+        );
+        assert!(pool_after_remove.total_pt.0 < pool_before_remove.total_pt.0);
+        assert!(pool_after_remove.total_sy.0 < pool_before_remove.total_sy.0);
     }
 }
