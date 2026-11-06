@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Step 1, Step 2, and Step 3 completed (`exodus-math` fully implemented, all vector tests passing). Ready for Step 4 (`mock-lst` contract) and Step 5 (`market` contract).
+- **Phase:** Steps 1 through 4 completed (`exodus-math` and `mock-lst` fully implemented, all unit and sandbox lifecycle tests passing). Ready for Step 5 (`market` contract: tokenization + index + YT interest + maturity).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
@@ -57,7 +57,7 @@ P0 first, always. Each step has a "done when".
 | 1 | Repo, workspace, LICENSE, CI running `cargo test` | CI green on an empty test (Done) |
 | 2 | Resolve U1 to U6 | Results filled in section 3 (Done: U1, U2, U3, U6 resolved) |
 | 3 | `scripts/reference_math.py` + `exodus-math` crate (fixed point, ln/exp, interest, market math) | Rust matches Python vectors (Done) |
-| 4 | MockLST contract | Sandbox test: rate only goes up, faucet works |
+| 4 | MockLST contract | Sandbox test: rate only goes up, faucet works (Done) |
 | 5 | Market: tokenization + index + YT interest + maturity (F1 to F4) | Sandbox lifecycle test without AMM passes |
 | 6 | Market: AMM PT swaps + liquidity (F5, F6) | Sandbox swap tests pass, gas recorded |
 | 7 | Deploy demo + LiNEAR market on testnet, seed liquidity | View calls work on testnet |
@@ -122,6 +122,7 @@ Environment variables (planned):
 | Date | Who | What changed | Next step |
 | --- | --- | --- | --- |
 | 6 Nov 2026 | Ayoub + Claude | Docs written: overview, SPEC, TECH_architecture, HANDOFF | Step 1 and 2 |
+| 6 Nov 2026 | Ayoub + Buoya | Step 3 (`exodus-math`) and Step 4 (`mock-lst` contract + sandbox tests) complete | Step 5 (`market` contract) |
 
 ---
 

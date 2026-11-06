@@ -10,5 +10,10 @@ description = "Mock Liquid Staking Token contract for Exodus testing and demos"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+near-sdk = "5"
+near-contract-standards = "5"
 
 [dev-dependencies]
+near-sdk = { version = "5", features = ["unit-testing"] }
+aws-lc-sys = { version = "0.47", features = ["prebuilt-nasm"] }
+
