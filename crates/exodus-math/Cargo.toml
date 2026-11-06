@@ -1,0 +1,11 @@
+[package]
+name = "exodus-math"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Fixed-point interest and AMM math for Exodus on NEAR"
+
+[dependencies]
+
+[dev-dependencies]

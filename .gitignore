@@ -1,0 +1,30 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Database
+*.db
+*.sqlite
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test coverage & logs
+coverage/
+*.log

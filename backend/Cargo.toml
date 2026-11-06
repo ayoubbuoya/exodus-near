@@ -1,0 +1,12 @@
+[package]
+name = "backend"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Exodus backend service (keeper, indexer, REST API)"
+
+[dependencies]
+exodus-math = { path = "../crates/exodus-math" }
+
+[dev-dependencies]

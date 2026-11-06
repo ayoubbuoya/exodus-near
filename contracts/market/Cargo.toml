@@ -1,0 +1,15 @@
+[package]
+name = "market"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Exodus Yield Tokenization Market Contract on NEAR"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+exodus-math = { path = "../../crates/exodus-math" }
+
+[dev-dependencies]

@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/exodus-math",
+    "contracts/market",
+    "contracts/mock-lst",
+    "backend",
+    "tests/sandbox",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Ayoub"]
+license = "MIT"
+readme = "README.md"

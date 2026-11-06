@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** docs done, no code yet.
+- **Phase:** Step 1 completed (workspace scaffolded, LICENSE added, CI workflow set, `cargo test --workspace` passing). Ready for Step 2 (resolving unknown rate interfaces U1 to U6) & Step 3 (`exodus-math`).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
