@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Steps 1 through 4 completed (`exodus-math` and `mock-lst` fully implemented, all unit and sandbox lifecycle tests passing). Ready for Step 5 (`market` contract: tokenization + index + YT interest + maturity).
+- **Phase:** Steps 1 through 5 completed (`exodus-math`, `mock-lst`, and `market` contract tokenization/index/YT interest/maturity all passing). Ready for Step 6 (`market` contract: AMM PT swaps + liquidity).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
@@ -123,6 +123,7 @@ Environment variables (planned):
 | --- | --- | --- | --- |
 | 6 Nov 2026 | Ayoub + Claude | Docs written: overview, SPEC, TECH_architecture, HANDOFF | Step 1 and 2 |
 | 6 Nov 2026 | Ayoub + Buoya | Step 3 (`exodus-math`) and Step 4 (`mock-lst` contract + sandbox tests) complete | Step 5 (`market` contract) |
+| 6 Nov 2026 | Ayoub + Buoya | Step 5 (`market` contract: tokenization F1, index F2, YT interest F3, maturity F4 + sandbox lifecycle tests) complete | Step 6 (`market` AMM: PT swaps + liquidity) |
 
 ---
 

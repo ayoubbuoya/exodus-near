@@ -1213,7 +1213,10 @@ dependencies = [
 name = "market"
 version = "0.1.0"
 dependencies = [
+ "aws-lc-sys",
  "exodus-math",
+ "near-contract-standards",
+ "near-sdk",
 ]
 
 [[package]]
@@ -1979,6 +1982,7 @@ version = "0.1.0"
 dependencies = [
  "aws-lc-sys",
  "exodus-math",
+ "market",
  "mock-lst",
  "near-contract-standards",
  "near-sdk",

@@ -10,6 +10,10 @@ description = "Exodus Yield Tokenization Market Contract on NEAR"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+near-sdk = "5"
+near-contract-standards = "5"
 exodus-math = { path = "../../crates/exodus-math" }
 
 [dev-dependencies]
+near-sdk = { version = "5", features = ["unit-testing"] }
+aws-lc-sys = { version = "0.47", features = ["prebuilt-nasm"] }
