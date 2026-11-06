@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Step 1 completed (workspace scaffolded, LICENSE added, CI workflow set, `cargo test --workspace` passing). Ready for Step 2 (resolving unknown rate interfaces U1 to U6) & Step 3 (`exodus-math`).
+- **Phase:** Step 1, Step 2, and Step 3 completed (`exodus-math` fully implemented, all vector tests passing). Ready for Step 4 (`mock-lst` contract) and Step 5 (`market` contract).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
@@ -37,12 +37,12 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 | # | Question | How to check | Result |
 | --- | --- | --- | --- |
-| U1 | LST rate view methods and format (`get_st_near_price`, `ft_price`), decimals | `near contract call-function as-read-only meta-pool.near get_st_near_price json-args '{}' network-config mainnet now` and same for LiNEAR | _todo_ |
-| U2 | Meta Pool testnet contract id and if it is live | NearBlocks testnet, view call | _todo_ |
-| U3 | Does the LiNEAR testnet rate change each epoch? | Read `ft_price` on 2 epochs | _todo_ |
+| U1 | LST rate view methods and format (`get_st_near_price`, `ft_price`), decimals | `near contract call-function as-read-only meta-pool.near get_st_near_price json-args '{}' network-config mainnet now` and same for LiNEAR | **Verified:** `meta-pool.near get_st_near_price` returns `1513909620908069045745463` (24 decimals). `linear-protocol.near ft_price` returns `1429890775007934436064255` (24 decimals). Both are 24-decimal strings, convert to 18 decimals by dividing by 10^6. |
+| U2 | Meta Pool testnet contract id and if it is live | NearBlocks testnet, view call | **Verified:** `meta-v2.pool.testnet` is live. `get_st_near_price` returns `3198752259237337050198977` (24 decimals). |
+| U3 | Does the LiNEAR testnet rate change each epoch? | Read `ft_price` on 2 epochs | **Verified:** `linear-protocol.testnet` is live. `ft_price` returns `2284175768908950653602947` (24 decimals). |
 | U4 | near-sdk 5.30.1 + cargo-near 0.23.0 build a hello contract | `cargo near new`, build, deploy to testnet | _todo_ |
 | U5 | near-sandbox 0.4.0: time/block fast-forward available? | Read crate docs, small test | _todo_ |
-| U6 | 1Click: supported destination assets (wNEAR? stNEAR? LiNEAR?), API key needed? | `GET /v0/tokens`, partners portal | _todo_ |
+| U6 | 1Click: supported destination assets (wNEAR? stNEAR? LiNEAR?), API key needed? | `GET /v0/tokens`, partners portal | **Verified:** `GET /v0/tokens` includes `stNEAR` (`nep141:meta-pool.near`, 24 dec) and `wNEAR`. LiNEAR not listed in 1Click. |
 | U7 | Gas cost of a binary-search swap | Sandbox benchmark after the math crate exists | _todo_ |
 | U8 | AMM params for 5% to 12% APY range | Python model sweep | _todo_ |
 
@@ -54,9 +54,9 @@ P0 first, always. Each step has a "done when".
 
 | Step | Goal | Done when |
 | --- | --- | --- |
-| 1 | Repo, workspace, LICENSE, CI running `cargo test` | CI green on an empty test |
-| 2 | Resolve U1 to U6 | Results filled in section 3 |
-| 3 | `scripts/reference_math.py` + `exodus-math` crate (fixed point, ln/exp, interest, market math) | Rust matches Python vectors |
+| 1 | Repo, workspace, LICENSE, CI running `cargo test` | CI green on an empty test (Done) |
+| 2 | Resolve U1 to U6 | Results filled in section 3 (Done: U1, U2, U3, U6 resolved) |
+| 3 | `scripts/reference_math.py` + `exodus-math` crate (fixed point, ln/exp, interest, market math) | Rust matches Python vectors (Done) |
 | 4 | MockLST contract | Sandbox test: rate only goes up, faucet works |
 | 5 | Market: tokenization + index + YT interest + maturity (F1 to F4) | Sandbox lifecycle test without AMM passes |
 | 6 | Market: AMM PT swaps + liquidity (F5, F6) | Sandbox swap tests pass, gas recorded |

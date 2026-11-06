@@ -1,21 +1,22 @@
 //! exodus-math
 //!
 //! Pure Rust fixed-point math engine for Exodus on NEAR.
-//! Handles fixed-point arithmetic (18 decimals), logit AMM curve calculations,
-//! and interest rate accruals.
+//!
+//! Features:
+//! - 18-decimal fixed-point arithmetic (`FP_ONE = 1e18`) with 256-bit intermediate safety.
+//! - High-precision natural logarithm (`fp_ln`) and exponential (`fp_exp`).
+//! - Principal Token (PT) and Yield Token (YT) tokenization math.
+//! - YT interest accrual and protocol fee tracking.
+//! - Pendle V2 logit AMM curve pricing and bounded binary search swaps.
 
-#![allow(dead_code)]
+pub mod fixed_point;
+pub mod interest;
+pub mod log_exp;
+pub mod market;
+pub mod tokenization;
 
-/// Number of decimals used in fixed-point operations (1e18).
-pub const FP_DECIMALS: u32 = 18;
-pub const FP_ONE: u128 = 1_000_000_000_000_000_000;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_fp_one_constant() {
-        assert_eq!(FP_ONE, 10u128.pow(FP_DECIMALS));
-    }
-}
+pub use fixed_point::*;
+pub use interest::*;
+pub use log_exp::*;
+pub use market::*;
+pub use tokenization::*;
