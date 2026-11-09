@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-bg-dark: #030712;
+    --color-card-dark: #0b1329;
+    --color-card-border: #1e293b;
+    --color-accent-cyan: #06b6d4;
+    --color-accent-emerald: #10b981;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #030712;
+    color: #f1f5f9;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom dark glass and glow effects */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-hover {
+  transition: all 0.2s ease-in-out;
+}
+.glass-panel-hover:hover {
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.15);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px -2px rgba(6, 182, 212, 0.25);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px -2px rgba(16, 185, 129, 0.25);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #030712;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
