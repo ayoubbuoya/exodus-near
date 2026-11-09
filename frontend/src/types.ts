@@ -54,7 +54,51 @@ export interface MarketHistoryPoint {
   tvl_near: number;
 }
 
-export type ActiveTab = 'fix' | 'long' | 'pool' | 'mint-redeem' | 'portfolio';
+export type ActiveTab = 'fix' | 'long' | 'pool' | 'mint-redeem' | 'portfolio' | 'intents';
+
+export interface OneClickToken {
+  assetId: string;
+  decimals: number;
+  blockchain: string;
+  symbol: string;
+  price?: number;
+  contractAddress?: string;
+  coingeckoId?: string;
+}
+
+export interface OneClickQuote {
+  amountIn: string;
+  amountInFormatted: string;
+  amountInUsd: string;
+  minAmountIn: string;
+  amountOut: string;
+  amountOutFormatted: string;
+  amountOutUsd: string;
+  minAmountOut: string;
+  timeEstimate: number; // in seconds
+  refundFee: string;
+  withdrawFee: string;
+  depositAddress?: string;
+}
+
+export interface OneClickQuoteResponse {
+  quote: OneClickQuote;
+  signature?: string;
+  correlationId?: string;
+}
+
+export interface IntentsRouteSimulation {
+  sourceToken: OneClickToken;
+  amountInFormatted: string;
+  amountInUsd: string;
+  nearReceivedFormatted: string;
+  nearReceivedYocto: string;
+  executionTimeSecs: number;
+  ptReceivedFormatted: string;
+  fixedApyPercent: number;
+  maturityFormatted: string;
+  netNearProfitFormatted: string;
+}
 
 export interface TxStatus {
   status: 'idle' | 'pending' | 'success' | 'error';

@@ -8,8 +8,9 @@ import { LongYieldTab } from './pages/LongYieldTab';
 import { PoolTab } from './pages/PoolTab';
 import { MintRedeemTab } from './pages/MintRedeemTab';
 import { PortfolioTab } from './pages/PortfolioTab';
+import { IntentsTab } from './pages/IntentsTab';
 import { ActiveTab, TxStatus } from './types';
-import { TrendingUp, Zap, Droplets, Split, Briefcase } from 'lucide-react';
+import { TrendingUp, Zap, Droplets, Split, Briefcase, Globe } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('fix');
@@ -21,6 +22,7 @@ export const App: React.FC = () => {
     { id: 'pool' as ActiveTab, label: 'Pool', icon: Droplets, desc: 'Provide Liquidity' },
     { id: 'mint-redeem' as ActiveTab, label: 'Mint / Redeem', icon: Split, desc: 'Tokenize LST' },
     { id: 'portfolio' as ActiveTab, label: 'Portfolio', icon: Briefcase, desc: 'Balances & Claims' },
+    { id: 'intents' as ActiveTab, label: 'Cross-Chain', icon: Globe, desc: 'Deposit via NEAR Intents' },
   ];
 
   return (
@@ -69,6 +71,7 @@ export const App: React.FC = () => {
           {activeTab === 'portfolio' && (
             <PortfolioTab onTxUpdate={setTxStatus} onNavigateTab={setActiveTab} />
           )}
+          {activeTab === 'intents' && <IntentsTab onTxUpdate={setTxStatus} />}
         </div>
       </main>
 
