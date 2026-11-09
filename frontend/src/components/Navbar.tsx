@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onTxUpdate }) => {
     try {
       const tx = await executeTransaction(
         selectedMarket.lstContractId,
-        'faucet_claim',
+        'faucet',
         {},
         '0',
         APP_CONFIG.gasUnits.standard

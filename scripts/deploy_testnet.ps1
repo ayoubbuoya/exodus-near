@@ -68,6 +68,45 @@ function Invoke-Near {
     }
 }
 
+function Invoke-ContractTx {
+    param(
+        [string]$Account,
+        [string]$Method,
+        [string]$JsonArgs,
+        [string]$Gas = "50.0 Tgas",
+        [string]$Deposit = "0 NEAR",
+        [string]$Signer = $RootAccount
+    )
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    try {
+        [System.IO.File]::WriteAllText($tmpFile, $JsonArgs, $utf8NoBom)
+        near contract call-function as-transaction $Account $Method file-args $tmpFile prepaid-gas $Gas attached-deposit $Deposit sign-as $Signer network-config $Network sign-with-keychain send
+    } catch {
+        Write-Warning "Transaction failed or already completed: $_"
+    } finally {
+        if (Test-Path $tmpFile) { Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Invoke-ContractView {
+    param(
+        [string]$Account,
+        [string]$Method,
+        [string]$JsonArgs = "{}"
+    )
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    try {
+        [System.IO.File]::WriteAllText($tmpFile, $JsonArgs, $utf8NoBom)
+        near contract call-function as-read-only $Account $Method file-args $tmpFile network-config $Network now
+    } catch {
+        Write-Warning "View call failed: $_"
+    } finally {
+        if (Test-Path $tmpFile) { Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 # 2. Sub-account creation
 if (-not $SkipAccountCreation) {
     Write-Host "`n[2/7] Creating Sub-Accounts (if needed)..." -ForegroundColor Green
@@ -76,10 +115,10 @@ if (-not $SkipAccountCreation) {
         near account create-account fund-myself $MockLstAccount '5 NEAR' autogenerate-new-keypair save-to-keychain sign-as $RootAccount network-config $Network sign-with-keychain send
     }
     Invoke-Near "Creating $DemoMarketAccount" {
-        near account create-account fund-myself $DemoMarketAccount '10 NEAR' autogenerate-new-keypair save-to-keychain sign-as $RootAccount network-config $Network sign-with-keychain send
+        near account create-account fund-myself $DemoMarketAccount '6 NEAR' autogenerate-new-keypair save-to-keychain sign-as $RootAccount network-config $Network sign-with-keychain send
     }
     Invoke-Near "Creating $LinearMarketAccount" {
-        near account create-account fund-myself $LinearMarketAccount '10 NEAR' autogenerate-new-keypair save-to-keychain sign-as $RootAccount network-config $Network sign-with-keychain send
+        near account create-account fund-myself $LinearMarketAccount '6 NEAR' autogenerate-new-keypair save-to-keychain sign-as $RootAccount network-config $Network sign-with-keychain send
     }
 }
 
@@ -87,24 +126,34 @@ if (-not $SkipAccountCreation) {
 Write-Host "`n[3/7] Deploying & Initializing MockLST ($MockLstAccount)..." -ForegroundColor Green
 near contract deploy $MockLstAccount use-file $MockLstWasm without-init-call network-config $Network sign-with-keychain send
 
-$mockLstInitArgs = "{`"owner_id`":`"$RootAccount`"}"
-Invoke-Near "Initializing MockLST" {
-    near contract call-function as-transaction $MockLstAccount new_default_meta json-args $mockLstInitArgs prepaid-gas '50.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
-}
+$mockLstInitArgs = '{"owner_id":"' + $RootAccount + '"}'
+Invoke-ContractTx $MockLstAccount "new_default_meta" $mockLstInitArgs "50.0 Tgas" "0 NEAR" $RootAccount
 
-# 4. Deploy & Init Demo Market (MockLST underlying, 3 days expiry)
+# 4. Deploy & Init Demo Market
 Write-Host "`n[4/7] Deploying & Initializing Demo Market ($DemoMarketAccount)..." -ForegroundColor Green
 near contract deploy $DemoMarketAccount use-file $MarketWasm without-init-call network-config $Network sign-with-keychain send
 
-# Expiry in 3 days (in nanoseconds)
-$CurrentEpochSec = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-$ExpiryNs = ($CurrentEpochSec + (3 * 86400)) * [int64]1000000000
+# Expiry on 31 Mar 2027 00:00:00 UTC (matching frontend config)
+$ExpiryNs = 1806451200000000000
 
-$demoInitArgs = "{`"owner_id`":`"$RootAccount`",`"treasury_id`":`"$RootAccount`",`"lst_id`":`"$MockLstAccount`",`"rate_source`":`"Mock`",`"expiry_ns`":$ExpiryNs,`"pt_name`":`"PT MockLST DEMO`",`"pt_symbol`":`"PT-MockLST`",`"initial_index`":`"1000000000000000000`",`"interest_fee_bps`":300,`"scalar_root`":`"10000000000000000000`",`"initial_anchor`":`"1020000000000000000`",`"ln_fee_rate_root`":`"999500333083417`",`"reserve_fee_bps`":2000}"
-
-Invoke-Near "Initializing Demo Market" {
-    near contract call-function as-transaction $DemoMarketAccount new json-args $demoInitArgs prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$demoInitArgs = @"
+{
+  "owner_id": "$RootAccount",
+  "treasury_id": "$RootAccount",
+  "lst_id": "$MockLstAccount",
+  "rate_source": "Mock",
+  "expiry_ns": $ExpiryNs,
+  "pt_name": "PT MockLST 31MAR2027",
+  "pt_symbol": "PT-MockLST",
+  "initial_index": "1000000000000000000",
+  "interest_fee_bps": 300,
+  "scalar_root": "10000000000000000000",
+  "initial_anchor": "1020000000000000000",
+  "ln_fee_rate_root": "999500333083417",
+  "reserve_fee_bps": 2000
 }
+"@
+Invoke-ContractTx $DemoMarketAccount "new" $demoInitArgs "100.0 Tgas" "0 NEAR" $RootAccount
 
 # 5. Deploy & Init LiNEAR Market (linear-protocol.testnet underlying, 31-MAR-2027 expiry)
 Write-Host "`n[5/7] Deploying & Initializing LiNEAR Market ($LinearMarketAccount)..." -ForegroundColor Green
@@ -114,56 +163,85 @@ near contract deploy $LinearMarketAccount use-file $MarketWasm without-init-call
 $LinearExpiryNs = 1806451200000000000
 $LinearInitIndex = "2284175768908950653" # Current testnet LiNEAR rate (18 decimals fixed point)
 
-$linearInitArgs = "{`"owner_id`":`"$RootAccount`",`"treasury_id`":`"$RootAccount`",`"lst_id`":`"linear-protocol.testnet`",`"rate_source`":`"Linear`",`"expiry_ns`":$LinearExpiryNs,`"pt_name`":`"PT LiNEAR 31MAR2027`",`"pt_symbol`":`"PT-LiNEAR-27`",`"initial_index`":`"$LinearInitIndex`",`"interest_fee_bps`":300,`"scalar_root`":`"10000000000000000000`",`"initial_anchor`":`"1020000000000000000`",`"ln_fee_rate_root`":`"999500333083417`",`"reserve_fee_bps`":2000}"
-
-Invoke-Near "Initializing LiNEAR Market" {
-    near contract call-function as-transaction $LinearMarketAccount new json-args $linearInitArgs prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$linearInitArgs = @"
+{
+  "owner_id": "$RootAccount",
+  "treasury_id": "$RootAccount",
+  "lst_id": "linear-protocol.testnet",
+  "rate_source": "Linear",
+  "expiry_ns": $LinearExpiryNs,
+  "pt_name": "PT LiNEAR 31MAR2027",
+  "pt_symbol": "PT-LiNEAR-27",
+  "initial_index": "$LinearInitIndex",
+  "interest_fee_bps": 300,
+  "scalar_root": "10000000000000000000",
+  "initial_anchor": "1020000000000000000",
+  "ln_fee_rate_root": "999500333083417",
+  "reserve_fee_bps": 2000
 }
+"@
+Invoke-ContractTx $LinearMarketAccount "new" $linearInitArgs "100.0 Tgas" "0 NEAR" $RootAccount
 
 # 6. Storage Registration & Liquidity Seeding (Demo Market)
 Write-Host "`n[6/7] Storage Registration & Seeding Liquidity on Demo Market..." -ForegroundColor Green
 
 # 6.1 Register storage for Root and DemoMarket on MockLST
 Write-Host "  -> Registering storage on MockLST..." -ForegroundColor Gray
-$regRootMockLst = "{`"account_id`":`"$RootAccount`"}"
-near contract call-function as-transaction $MockLstAccount storage_deposit json-args $regRootMockLst prepaid-gas '30.0 Tgas' attached-deposit '0.0125 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$regRootMockLst = '{"account_id":"' + $RootAccount + '"}'
+Invoke-ContractTx $MockLstAccount "storage_deposit" $regRootMockLst "30.0 Tgas" "0.0125 NEAR" $RootAccount
 
-$regDemoMarketMockLst = "{`"account_id`":`"$DemoMarketAccount`"}"
-near contract call-function as-transaction $MockLstAccount storage_deposit json-args $regDemoMarketMockLst prepaid-gas '30.0 Tgas' attached-deposit '0.0125 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$regDemoMarketMockLst = '{"account_id":"' + $DemoMarketAccount + '"}'
+Invoke-ContractTx $MockLstAccount "storage_deposit" $regDemoMarketMockLst "30.0 Tgas" "0.0125 NEAR" $RootAccount
 
 # 6.2 Register storage for Root on DemoMarket
 Write-Host "  -> Registering storage on Demo Market..." -ForegroundColor Gray
-$regRootDemoMarket = "{`"account_id`":`"$RootAccount`"}"
-near contract call-function as-transaction $DemoMarketAccount storage_deposit json-args $regRootDemoMarket prepaid-gas '30.0 Tgas' attached-deposit '0.0125 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$regRootDemoMarket = '{"account_id":"' + $RootAccount + '"}'
+Invoke-ContractTx $DemoMarketAccount "storage_deposit" $regRootDemoMarket "30.0 Tgas" "0.0125 NEAR" $RootAccount
 
 # 6.3 Claim MockLST from Faucet (100 MockLST)
 Write-Host "  -> Claiming 100 MockLST from faucet..." -ForegroundColor Gray
-near contract call-function as-transaction $MockLstAccount faucet_claim json-args '{}' prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+Invoke-ContractTx $MockLstAccount "faucet" "{}" "30.0 Tgas" "0 NEAR" $RootAccount
 
 # 6.4 Mint 50 PT + 50 YT (using 50 MockLST)
 Write-Host "  -> Minting 50 PT + 50 YT..." -ForegroundColor Gray
-$mintArgs = "{`"receiver_id`":`"$DemoMarketAccount`",`"amount`":`"50000000000000000000000000`",`"msg`":`"{\\`"action\\`":\\`"mint_py\\`"}`"}"
-near contract call-function as-transaction $MockLstAccount ft_transfer_call json-args $mintArgs prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$mintArgs = @"
+{
+  "receiver_id": "$DemoMarketAccount",
+  "amount": "50000000000000000000000000",
+  "msg": "{\"action\":\"mint_py\"}"
+}
+"@
+Invoke-ContractTx $MockLstAccount "ft_transfer_call" $mintArgs "100.0 Tgas" "1 yoctoNEAR" $RootAccount
 
 # 6.5 Add Initial Liquidity: 25 PT + 25 MockLST
 Write-Host "  -> Seeding AMM Pool with 25 PT + 25 MockLST..." -ForegroundColor Gray
-$seedLiquidityArgs = "{`"receiver_id`":`"$DemoMarketAccount`",`"amount`":`"25000000000000000000000000`",`"msg`":`"{\\`"action\\`":\\`"add_liquidity\\`",\\`"pt_desired\\`":\\`"25000000000000000000000000\\`",\\`"min_lp_out\\`":\\`"1000\\`"}`"}"
-near contract call-function as-transaction $MockLstAccount ft_transfer_call json-args $seedLiquidityArgs prepaid-gas '100.0 Tgas' attached-deposit '1 yoctoNEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+$seedLiquidityArgs = @"
+{
+  "receiver_id": "$DemoMarketAccount",
+  "amount": "25000000000000000000000000",
+  "msg": "{\"action\":\"add_liquidity\",\"pt_desired\":\"25000000000000000000000000\",\"min_lp_out\":\"1000\"}"
+}
+"@
+Invoke-ContractTx $MockLstAccount "ft_transfer_call" $seedLiquidityArgs "100.0 Tgas" "1 yoctoNEAR" $RootAccount
 
 # 7. Verification View Calls
 Write-Host "`n[7/7] Verifying Testnet View Calls..." -ForegroundColor Green
 
 Write-Host "`n--- Demo Market View ---" -ForegroundColor Yellow
-near contract call-function as-read-only $DemoMarketAccount get_market json-args '{}' network-config $Network now
+Invoke-ContractView $DemoMarketAccount "get_market"
 
 Write-Host "`n--- Demo Market Pool View ---" -ForegroundColor Yellow
-near contract call-function as-read-only $DemoMarketAccount get_pool json-args '{}' network-config $Network now
+Invoke-ContractView $DemoMarketAccount "get_pool"
 
 Write-Host "`n--- LiNEAR Market View ---" -ForegroundColor Yellow
-near contract call-function as-read-only $LinearMarketAccount get_market json-args '{}' network-config $Network now
+Invoke-ContractView $LinearMarketAccount "get_market"
 
 Write-Host "`n--- LiNEAR Market Pool View ---" -ForegroundColor Yellow
-near contract call-function as-read-only $LinearMarketAccount get_pool json-args '{}' network-config $Network now
+Invoke-ContractView $LinearMarketAccount "get_pool"
+
+Write-Host "`n--- Demo Market YT Swap Preview (1 MockLST in) ---" -ForegroundColor Yellow
+$previewYtArgs = '{"sy_in":"1000000000000000000000000"}'
+Invoke-ContractView $DemoMarketAccount "preview_swap_exact_sy_for_yt" $previewYtArgs
 
 Write-Host "`n==========================================================" -ForegroundColor Cyan
 Write-Host "   EXODUS TESTNET DEPLOYMENT COMPLETED SUCCESSFULLY!    " -ForegroundColor Cyan
