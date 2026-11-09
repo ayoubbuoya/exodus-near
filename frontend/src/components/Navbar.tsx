@@ -1,13 +1,61 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { useMarket } from '../context/MarketContext';
 import { APP_CONFIG } from '../config';
 import { shortenAddress } from '../lib/formatters';
+import type { TxStatus } from '../types';
 import { Wallet, LogOut, ChevronDown, Sparkles, ExternalLink } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
-  const { accountId, isConnected, isConnecting, connect, disconnect } = useWallet();
-  const { selectedMarket, setSelectedMarket } = useMarket();
+interface NavbarProps {
+  onTxUpdate?: (tx: TxStatus) => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onTxUpdate }) => {
+  const { accountId, isConnected, isConnecting, connect, disconnect, executeTransaction } = useWallet();
+  const { selectedMarket, setSelectedMarket, refresh } = useMarket();
+  const [isClaimingFaucet, setIsClaimingFaucet] = useState<boolean>(false);
+
+  const handleClaimFaucet = async () => {
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+
+    setIsClaimingFaucet(true);
+    onTxUpdate?.({
+      status: 'pending',
+      title: 'Claiming Demo LST',
+      message: 'Requesting 100 MockLST from the testnet faucet...',
+    });
+
+    try {
+      const tx = await executeTransaction(
+        selectedMarket.lstContractId,
+        'faucet_claim',
+        {},
+        '0',
+        APP_CONFIG.gasUnits.standard
+      );
+
+      onTxUpdate?.({
+        status: 'success',
+        title: '100 Demo LST Received!',
+        message: 'Successfully claimed 100 MockLST. You are ready to trade PT, YT, or provide liquidity!',
+        txHash: tx?.transaction?.hash,
+      });
+
+      await refresh();
+    } catch (err: any) {
+      console.error('Faucet claim error:', err);
+      onTxUpdate?.({
+        status: 'error',
+        title: 'Faucet Claim Failed',
+        message: err?.message || 'Could not claim testnet MockLST. Please ensure your wallet has a small amount of testnet NEAR for gas.',
+      });
+    } finally {
+      setIsClaimingFaucet(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
@@ -62,8 +110,22 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
-        {/* Right: Network status & Wallet Button */}
+        {/* Right: Faucet button, Network status & Wallet Button */}
         <div className="flex items-center space-x-3">
+          {/* Demo Faucet Button */}
+          {selectedMarket.isDemo && (
+            <button
+              onClick={handleClaimFaucet}
+              disabled={isClaimingFaucet}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold text-xs transition shadow-sm active:scale-95 disabled:opacity-50"
+              title="Claim 100 free MockLST tokens to test Exodus"
+            >
+              <Sparkles className={`w-3.5 h-3.5 text-amber-400 ${isClaimingFaucet ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isClaimingFaucet ? 'Claiming...' : 'Claim 100 mLST'}</span>
+              <span className="sm:hidden">{isClaimingFaucet ? 'Claiming...' : 'Faucet'}</span>
+            </button>
+          )}
+
           {/* Testnet indicator */}
           <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
