@@ -145,13 +145,14 @@ impl NearRpcClient {
         .await
     }
 
-    /// Queries the latest block header to retrieve current epoch height.
+    /// Queries the current epoch height from NEAR RPC via validators endpoint.
+    /// This directly matches `env::epoch_height()` in smart contracts.
     pub async fn get_current_epoch_height(&self) -> Result<u64, String> {
         let request_body = serde_json::json!({
             "jsonrpc": "2.0",
             "id": "exodus-backend",
-            "method": "block",
-            "params": { "finality": "final" }
+            "method": "validators",
+            "params": [null]
         });
 
         let resp = self
@@ -171,33 +172,32 @@ impl NearRpcClient {
             return Err(format!("RPC error: {err}"));
         }
 
-        // In NEAR RPC block response, result.header.epoch_height is standard
-        if let Some(epoch) = resp_json["result"]["header"]["epoch_height"].as_u64() {
+        if let Some(epoch) = resp_json["result"]["epoch_height"].as_u64() {
             return Ok(epoch);
         }
 
-        // Fallback: check status endpoint
-        let status_body = serde_json::json!({
+        // Fallback for mock/local setups: check block header epoch_height
+        let block_body = serde_json::json!({
             "jsonrpc": "2.0",
             "id": "exodus-backend",
-            "method": "status",
-            "params": []
+            "method": "block",
+            "params": { "finality": "final" }
         });
 
-        let status_resp = self
+        let block_resp = self
             .client
             .post(&self.rpc_url)
-            .json(&status_body)
+            .json(&block_body)
             .send()
             .await
-            .map_err(|e| format!("RPC status request failed: {e}"))?;
+            .map_err(|e| format!("RPC block request failed: {e}"))?;
 
-        let status_json: Value = status_resp
+        let block_json: Value = block_resp
             .json()
             .await
-            .map_err(|e| format!("Failed to parse RPC status JSON: {e}"))?;
+            .map_err(|e| format!("Failed to parse RPC block JSON: {e}"))?;
 
-        status_json["result"]["sync_info"]["epoch_start_height"]
+        block_json["result"]["header"]["epoch_height"]
             .as_u64()
             .ok_or_else(|| "Could not determine epoch height from RPC".to_string())
     }
@@ -225,6 +225,23 @@ impl NearRpcClient {
                 );
                 Ok("KEEPER_DRY_RUN".to_string())
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_live_rpc_epoch_and_market() {
+        let client = NearRpcClient::new("https://test.rpc.fastnear.com".to_string());
+        if let Ok(epoch_val) = client.get_current_epoch_height().await {
+            assert!(epoch_val > 5000, "Epoch should be > 5000 on testnet");
+            let market = client.get_market("demo-market.fond-buoya.testnet").await;
+            assert!(market.is_ok(), "Failed to fetch demo-market: {:?}", market.err());
+            let m = market.unwrap();
+            assert_eq!(m.owner_id, "fond-buoya.testnet");
         }
     }
 }

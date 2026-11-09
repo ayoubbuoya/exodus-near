@@ -34,7 +34,7 @@ impl Config {
                 if near_network == "mainnet" {
                     "https://rpc.mainnet.near.org".to_string()
                 } else {
-                    "https://rpc.testnet.near.org".to_string()
+                    "https://test.rpc.fastnear.com".to_string()
                 }
             });
 
