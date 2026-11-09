@@ -1,6 +1,6 @@
 # Exodus on NEAR: Handoff
 
-Last updated: 6 Nov 2026. Update this file at the end of every work session.
+Last updated: 9 Nov 2026. Update this file at the end of every work session.
 
 For anyone joining (teammate or coding agent): read this file first, then `overview.md`, `SPEC.md`, `TECH_architecture.md`.
 
@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Step 7 deployment and simulation scripts created for testnet root `fond-buoya.testnet` (`deploy_testnet.ps1`, `deploy_testnet.sh`, `demo_advance.ps1`, `demo_advance.sh`). Ready for Step 8 (Backend: keeper, indexer, API).
+- **Phase:** Step 8 complete (Backend: Axum REST API, PostgreSQL via SQLx migrations/schema, NEAR RPC client, indexer loop, keeper automation, 1Click Intents proxy). Ready for Step 9 (Frontend: React 19 + Vite + NEAR Connect).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
 
@@ -125,6 +125,7 @@ Environment variables (planned):
 | 6 Nov 2026 | Ayoub + Buoya | Step 5 (`market` contract: tokenization F1, index F2, YT interest F3, maturity F4 + sandbox lifecycle tests) complete | Step 6 (`market` AMM: PT swaps + liquidity) |
 | 6 Nov 2026 | Ayoub + Buoya | Step 6 (`market` AMM: PT swaps F5, liquidity F6, 256-bit sqrt, previews, NEP-297 events, sandbox integration test) complete | Step 7 (Deploy demo + LiNEAR market on testnet, seed liquidity) |
 | 6 Nov 2026 | Ayoub + Buoya | Step 7 (Automated testnet deployment & liquidity seeding scripts `deploy_testnet.ps1`/`.sh` and demo yield advance `demo_advance.ps1`/`.sh` configured for `fond-buoya.testnet`) complete | Step 8 (Backend: keeper, indexer, API) |
+| 9 Nov 2026 | Ayoub + Buoya | Step 8 (Backend service: Axum REST API, PostgreSQL schema & SQLx migrations, NEAR JSON-RPC client, periodic Indexer, Keeper freshness checks, 1Click Intents proxy + unit tests) complete | Step 9 (Frontend: React 19 + Vite + NEAR Connect) |
 
 ---
 
