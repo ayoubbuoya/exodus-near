@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Steps 1 through 6 completed (`exodus-math`, `mock-lst`, and `market` contract tokenization/index/YT interest/maturity/AMM PT swaps and liquidity all passing). Ready for Step 7 (Deploy demo + LiNEAR market on testnet, seed liquidity).
+- **Phase:** Step 7 deployment and simulation scripts created for testnet root `fond-buoya.testnet` (`deploy_testnet.ps1`, `deploy_testnet.sh`, `demo_advance.ps1`, `demo_advance.sh`). Ready for Step 8 (Backend: keeper, indexer, API).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
@@ -125,6 +125,7 @@ Environment variables (planned):
 | 6 Nov 2026 | Ayoub + Buoya | Step 3 (`exodus-math`) and Step 4 (`mock-lst` contract + sandbox tests) complete | Step 5 (`market` contract) |
 | 6 Nov 2026 | Ayoub + Buoya | Step 5 (`market` contract: tokenization F1, index F2, YT interest F3, maturity F4 + sandbox lifecycle tests) complete | Step 6 (`market` AMM: PT swaps + liquidity) |
 | 6 Nov 2026 | Ayoub + Buoya | Step 6 (`market` AMM: PT swaps F5, liquidity F6, 256-bit sqrt, previews, NEP-297 events, sandbox integration test) complete | Step 7 (Deploy demo + LiNEAR market on testnet, seed liquidity) |
+| 6 Nov 2026 | Ayoub + Buoya | Step 7 (Automated testnet deployment & liquidity seeding scripts `deploy_testnet.ps1`/`.sh` and demo yield advance `demo_advance.ps1`/`.sh` configured for `fond-buoya.testnet`) complete | Step 8 (Backend: keeper, indexer, API) |
 
 ---
 
