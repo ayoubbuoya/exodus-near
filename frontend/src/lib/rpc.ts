@@ -71,6 +71,14 @@ export async function fetchPreviewPtForSy(contractId: string, ptInYocto: string)
   return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_pt_for_sy', { pt_in: ptInYocto });
 }
 
+export async function fetchPreviewSyForYt(contractId: string, syInYocto: string): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_sy_for_yt', { sy_in: syInYocto });
+}
+
+export async function fetchPreviewYtForSy(contractId: string, ytInYocto: string): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_yt_for_sy', { yt_in: ytInYocto });
+}
+
 /**
  * Fetches market history from Exodus backend, with fallback data if backend is offline.
  */

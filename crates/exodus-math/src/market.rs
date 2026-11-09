@@ -260,6 +260,118 @@ pub fn binary_search_sy_for_pt(
     }
 }
 
+/// Result of a YT swap execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct YtSwapResult {
+    /// YT delta to user (>0 when buying YT, <0 when selling YT)
+    pub net_yt_to_user: i128,
+    /// SY delta to user (<0 when paying SY, >0 when receiving SY)
+    pub net_sy_to_user: i128,
+    /// Fee SY sent to treasury/reserve
+    pub fee_sy_to_reserve: u128,
+    /// New implied rate
+    pub new_last_ln_implied_rate: i128,
+    /// New pool reserves
+    pub new_total_pt: u128,
+    pub new_total_sy: u128,
+}
+
+/// Sells exact `yt_in` for SY via flash redemption:
+/// 1. Buys `yt_in` PT from AMM using SY: pt_cost_sy = calc_swap_pt(+yt_in).
+/// 2. Merges (yt_in PT + yt_in YT) into gross SY: gross_sy = fp_div(yt_in, py_index).
+/// 3. Net SY to user: gross_sy - pt_cost_sy.
+pub fn calc_swap_yt_exact_in(
+    config: &MarketAmmConfig,
+    reserves: &MarketReserves,
+    yt_in: u128,
+    py_index: u128,
+    now: u64,
+) -> Result<YtSwapResult, MathError> {
+    if yt_in == 0 {
+        return Err(MathError::InsufficientLiquidity);
+    }
+    // Step 1: Buy yt_in PT from AMM
+    let pt_swap_res = calc_swap_pt(config, reserves, yt_in as i128, py_index, now)?;
+    let pt_cost_sy = (-pt_swap_res.net_sy_to_user) as u128;
+
+    // Step 2: Merge yt_in PT + yt_in YT into gross SY
+    let gross_sy = fp_div(yt_in, py_index);
+
+    if gross_sy <= pt_cost_sy {
+        return Err(MathError::ExchangeRateTooLow);
+    }
+
+    let net_sy_to_user = (gross_sy - pt_cost_sy) as i128;
+
+    Ok(YtSwapResult {
+        net_yt_to_user: -(yt_in as i128),
+        net_sy_to_user,
+        fee_sy_to_reserve: pt_swap_res.fee_sy_to_reserve,
+        new_last_ln_implied_rate: pt_swap_res.new_last_ln_implied_rate,
+        new_total_pt: pt_swap_res.new_total_pt,
+        new_total_sy: pt_swap_res.new_total_sy,
+    })
+}
+
+/// Solves for maximum YT received when spending exact `sy_in` using bounded binary search:
+/// 1. Flash mints `y` PT + `y` YT (requires gross_sy = fp_div(y, py_index)).
+/// 2. Sells `y` PT to AMM for borrowed SY: sy_from_pt = calc_swap_pt(-y).
+/// 3. Net user SY cost = gross_sy - sy_from_pt.
+pub fn binary_search_sy_for_yt(
+    config: &MarketAmmConfig,
+    reserves: &MarketReserves,
+    sy_in: u128,
+    py_index: u128,
+    now: u64,
+    _hint_yt: Option<u128>,
+) -> Result<u128, MathError> {
+    if sy_in == 0 {
+        return Ok(0);
+    }
+
+    // High bound: Cannot sell more PT than the pool can accept
+    let max_yt_out = reserves.total_pt.saturating_mul(10).max(sy_in.saturating_mul(100));
+    let mut low = 0u128;
+    let mut high = max_yt_out;
+    let mut best_yt = 0u128;
+
+    for _ in 0..64 {
+        if low > high {
+            break;
+        }
+        let mid = (low + high) / 2;
+        if mid == 0 {
+            low = 1;
+            continue;
+        }
+
+        // Selling mid PT to AMM: d_pt is -mid
+        match calc_swap_pt(config, reserves, -(mid as i128), py_index, now) {
+            Ok(res) => {
+                let sy_from_pt = res.net_sy_to_user as u128;
+                let gross_sy = fp_div(mid, py_index);
+                let net_cost_sy = gross_sy.saturating_sub(sy_from_pt);
+
+                if net_cost_sy <= sy_in {
+                    best_yt = mid;
+                    low = mid + 1; // Try to buy more YT
+                } else {
+                    high = mid - 1; // Exceeds sy_in budget
+                }
+            }
+            Err(_) => {
+                high = mid - 1;
+            }
+        }
+    }
+
+    if best_yt == 0 {
+        Err(MathError::BinarySearchFailed)
+    } else {
+        Ok(best_yt)
+    }
+}
+
 /// Computes LP tokens minted for the first deposit:
 /// total_lp = sqrt(pt * sy)
 /// user_lp = total_lp - MINIMUM_LIQUIDITY (where MINIMUM_LIQUIDITY is locked).
@@ -358,5 +470,33 @@ mod tests {
         ).unwrap();
         assert_eq!(pt_out, 50_000_000_000);
         assert_eq!(sy_out, 50_000_000_000);
+    }
+
+    #[test]
+    fn test_yt_swap_lifecycle() {
+        let config = MarketAmmConfig {
+            scalar_root: 10 * FP_ONE,
+            initial_anchor: FP_ONE,
+            ln_fee_rate_root: 0,
+            reserve_fee_bps: 0,
+            expiry: 365 * 86400,
+        };
+        let reserves = MarketReserves {
+            total_pt: 100_000 * FP_ONE,
+            total_sy: 100_000 * FP_ONE,
+            last_ln_implied_rate: 80_000_000_000_000_000, // ~8%
+        };
+        let py_index = FP_ONE;
+        let now = 0;
+
+        // Buy YT with 10 SY
+        let sy_in = 10 * FP_ONE;
+        let yt_out = binary_search_sy_for_yt(&config, &reserves, sy_in, py_index, now, None).unwrap();
+        // Since rate is ~8%, 10 SY buys around 125 YT (leverage ~12.5x)
+        assert!(yt_out > 50 * FP_ONE, "Expected high leverage on YT");
+
+        // Now test selling YT back
+        let sell_res = calc_swap_yt_exact_in(&config, &reserves, 10 * FP_ONE, py_index, now).unwrap();
+        assert!(sell_res.net_sy_to_user > 0, "Expected positive SY output from selling YT");
     }
 }

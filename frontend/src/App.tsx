@@ -4,11 +4,12 @@ import { MarketStats } from './components/MarketStats';
 import { ApyChart } from './components/ApyChart';
 import { TxModal } from './components/TxModal';
 import { FixYieldTab } from './pages/FixYieldTab';
+import { LongYieldTab } from './pages/LongYieldTab';
 import { PoolTab } from './pages/PoolTab';
 import { MintRedeemTab } from './pages/MintRedeemTab';
 import { PortfolioTab } from './pages/PortfolioTab';
 import { ActiveTab, TxStatus } from './types';
-import { TrendingUp, Droplets, Split, Briefcase } from 'lucide-react';
+import { TrendingUp, Zap, Droplets, Split, Briefcase } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('fix');
@@ -16,6 +17,7 @@ export const App: React.FC = () => {
 
   const tabs = [
     { id: 'fix' as ActiveTab, label: 'Fix Yield', icon: TrendingUp, desc: 'Buy & Sell PT' },
+    { id: 'long' as ActiveTab, label: 'Long Yield', icon: Zap, desc: 'Leveraged Staking Yield' },
     { id: 'pool' as ActiveTab, label: 'Pool', icon: Droplets, desc: 'Provide Liquidity' },
     { id: 'mint-redeem' as ActiveTab, label: 'Mint / Redeem', icon: Split, desc: 'Tokenize LST' },
     { id: 'portfolio' as ActiveTab, label: 'Portfolio', icon: Briefcase, desc: 'Balances & Claims' },
@@ -61,6 +63,7 @@ export const App: React.FC = () => {
         {/* Tab Content Panes */}
         <div className="mb-12">
           {activeTab === 'fix' && <FixYieldTab onTxUpdate={setTxStatus} />}
+          {activeTab === 'long' && <LongYieldTab onTxUpdate={setTxStatus} />}
           {activeTab === 'pool' && <PoolTab onTxUpdate={setTxStatus} />}
           {activeTab === 'mint-redeem' && <MintRedeemTab onTxUpdate={setTxStatus} />}
           {activeTab === 'portfolio' && (

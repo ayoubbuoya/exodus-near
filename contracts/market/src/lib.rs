@@ -500,6 +500,72 @@ impl Market {
         self.internal_transfer_sy_out(caller, sy_out)
     }
 
+    /// Sells exact YT for LST using flash redemption against the AMM.
+    #[payable]
+    pub fn swap_exact_yt_for_sy(&mut self, yt_in: U128, min_sy_out: U128) -> Promise {
+        assert_one_yocto();
+        let caller = env::predecessor_account_id();
+        let yt_amount = yt_in.0;
+        require!(yt_amount > 0, "yt_in must be positive");
+        require!(!self.paused, "Market is paused");
+        require!(
+            self.index_epoch == env::epoch_height(),
+            "INDEX_STALE: call refresh_index"
+        );
+        let now_ns = env::block_timestamp();
+        require!(
+            now_ns < self.expiry_ns,
+            "Market has reached maturity"
+        );
+        require!(self.total_lp > 0, "No liquidity in pool");
+
+        let cur_yt = self.yt_balances.get(&caller).copied().unwrap_or(0);
+        require!(cur_yt >= yt_amount, "Insufficient YT balance");
+
+        // Accrue interest before changing YT balance
+        self.internal_accrue_yt_interest(&caller);
+
+        let now_secs = now_ns / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        let swap_res = exodus_math::calc_swap_yt_exact_in(
+            &config,
+            &reserves,
+            yt_amount,
+            self.py_index,
+            now_secs,
+        ).expect("swap execution failed");
+
+        let sy_out = swap_res.net_sy_to_user as u128;
+        require!(sy_out >= min_sy_out.0, "Slippage: sy_out below min_sy_out");
+
+        // Deduct YT from caller
+        self.yt_balances.insert(caller.clone(), cur_yt - yt_amount);
+        self.yt_total_supply = self.yt_total_supply.saturating_sub(yt_amount);
+
+        // Update pool reserves
+        self.total_pt = swap_res.new_total_pt;
+        self.total_sy = swap_res.new_total_sy;
+        self.last_ln_implied_rate = swap_res.new_last_ln_implied_rate;
+        self.treasury_sy = self.treasury_sy.saturating_add(swap_res.fee_sy_to_reserve);
+
+        events::emit_swap(&caller, "yt_sell", yt_amount, sy_out, swap_res.fee_sy_to_reserve, self.py_index);
+
+        self.internal_transfer_sy_out(caller, sy_out)
+    }
+
     /// Removes liquidity pro-rata and receives PT + SY.
     /// Can be called even when paused or after maturity (user exit guarantee).
     #[payable]
@@ -839,6 +905,88 @@ impl Market {
         }
     }
 
+    pub fn preview_swap_exact_sy_for_yt(&self, sy_in: U128) -> SwapPreviewView {
+        let sy_amount = sy_in.0;
+        require!(sy_amount > 0, "sy_in must be positive");
+        require!(self.total_lp > 0, "No liquidity in pool");
+        let now_secs = env::block_timestamp() / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        require!(now_secs < expiry_secs, "Market has expired");
+
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        let yt_out = exodus_math::binary_search_sy_for_yt(
+            &config,
+            &reserves,
+            sy_amount,
+            self.py_index,
+            now_secs,
+            None,
+        ).expect("binary search failed");
+
+        let swap_res = exodus_math::calc_swap_pt(
+            &config,
+            &reserves,
+            -(yt_out as i128),
+            self.py_index,
+            now_secs,
+        ).expect("preview calc failed");
+
+        SwapPreviewView {
+            amount_out: U128(yt_out),
+            fee_sy: U128(swap_res.fee_sy_to_reserve),
+            new_last_ln_implied_rate: swap_res.new_last_ln_implied_rate.to_string(),
+        }
+    }
+
+    pub fn preview_swap_exact_yt_for_sy(&self, yt_in: U128) -> SwapPreviewView {
+        let yt_amount = yt_in.0;
+        require!(yt_amount > 0, "yt_in must be positive");
+        require!(self.total_lp > 0, "No liquidity in pool");
+        let now_secs = env::block_timestamp() / 1_000_000_000;
+        let expiry_secs = self.expiry_ns / 1_000_000_000;
+        require!(now_secs < expiry_secs, "Market has expired");
+
+        let config = exodus_math::MarketAmmConfig {
+            scalar_root: self.scalar_root,
+            initial_anchor: self.initial_anchor,
+            ln_fee_rate_root: self.ln_fee_rate_root,
+            reserve_fee_bps: self.reserve_fee_bps as u32,
+            expiry: expiry_secs,
+        };
+        let reserves = exodus_math::MarketReserves {
+            total_pt: self.total_pt,
+            total_sy: self.total_sy,
+            last_ln_implied_rate: self.last_ln_implied_rate,
+        };
+
+        let swap_res = exodus_math::calc_swap_yt_exact_in(
+            &config,
+            &reserves,
+            yt_amount,
+            self.py_index,
+            now_secs,
+        ).expect("preview calc failed");
+
+        let sy_out = swap_res.net_sy_to_user as u128;
+        SwapPreviewView {
+            amount_out: U128(sy_out),
+            fee_sy: U128(swap_res.fee_sy_to_reserve),
+            new_last_ln_implied_rate: swap_res.new_last_ln_implied_rate.to_string(),
+        }
+    }
+
     pub fn yt_balance_of(&self, account_id: AccountId) -> U128 {
         U128(self.yt_balances.get(&account_id).copied().unwrap_or(0))
     }
@@ -864,6 +1012,10 @@ pub enum TransferMsg {
     #[serde(rename = "swap_exact_sy_for_pt")]
     SwapExactSyForPt {
         min_pt_out: U128,
+    },
+    #[serde(rename = "swap_exact_sy_for_yt")]
+    SwapExactSyForYt {
+        min_yt_out: U128,
     },
     #[serde(rename = "add_liquidity")]
     AddLiquidity {
@@ -999,6 +1151,89 @@ impl FungibleTokenReceiver for Market {
                     "pt_buy",
                     sy_in,
                     pt_out,
+                    swap_res.fee_sy_to_reserve,
+                    self.py_index,
+                );
+
+                PromiseOrValue::Value(U128(0))
+            }
+            Ok(TransferMsg::SwapExactSyForYt { min_yt_out }) => {
+                require!(!self.paused, "Market is paused");
+                require!(
+                    self.index_epoch == env::epoch_height(),
+                    "INDEX_STALE: call refresh_index"
+                );
+                let now_ns = env::block_timestamp();
+                require!(
+                    now_ns < self.expiry_ns,
+                    "Market has reached maturity"
+                );
+                require!(self.total_lp > 0, "No liquidity in pool");
+
+                let now_secs = now_ns / 1_000_000_000;
+                let expiry_secs = self.expiry_ns / 1_000_000_000;
+
+                let config = exodus_math::MarketAmmConfig {
+                    scalar_root: self.scalar_root,
+                    initial_anchor: self.initial_anchor,
+                    ln_fee_rate_root: self.ln_fee_rate_root,
+                    reserve_fee_bps: self.reserve_fee_bps as u32,
+                    expiry: expiry_secs,
+                };
+                let reserves = exodus_math::MarketReserves {
+                    total_pt: self.total_pt,
+                    total_sy: self.total_sy,
+                    last_ln_implied_rate: self.last_ln_implied_rate,
+                };
+
+                let sy_in = amount.0;
+                let yt_out = match exodus_math::binary_search_sy_for_yt(
+                    &config,
+                    &reserves,
+                    sy_in,
+                    self.py_index,
+                    now_secs,
+                    None,
+                ) {
+                    Ok(out) => out,
+                    Err(_) => return PromiseOrValue::Value(amount),
+                };
+
+                if yt_out < min_yt_out.0 {
+                    return PromiseOrValue::Value(amount);
+                }
+
+                // Selling yt_out PT to AMM: d_pt is -yt_out
+                let swap_res = match exodus_math::calc_swap_pt(
+                    &config,
+                    &reserves,
+                    -(yt_out as i128),
+                    self.py_index,
+                    now_secs,
+                ) {
+                    Ok(res) => res,
+                    Err(_) => return PromiseOrValue::Value(amount),
+                };
+
+                // Update pool reserves
+                self.total_pt = swap_res.new_total_pt;
+                self.total_sy = swap_res.new_total_sy;
+                self.last_ln_implied_rate = swap_res.new_last_ln_implied_rate;
+                self.treasury_sy = self.treasury_sy.saturating_add(swap_res.fee_sy_to_reserve);
+
+                // Accrue interest before increasing YT balance
+                self.internal_accrue_yt_interest(&sender_id);
+
+                // Credit YT ledger
+                let cur_yt = self.yt_balances.get(&sender_id).copied().unwrap_or(0);
+                self.yt_balances.insert(sender_id.clone(), cur_yt.saturating_add(yt_out));
+                self.yt_total_supply = self.yt_total_supply.saturating_add(yt_out);
+
+                events::emit_swap(
+                    &sender_id,
+                    "yt_buy",
+                    sy_in,
+                    yt_out,
                     swap_res.fee_sy_to_reserve,
                     self.py_index,
                 );
@@ -1423,5 +1658,54 @@ mod tests {
         set_context(alice(), 1, 1_000_000_000, 1);
         let _remove_promise = market.remove_liquidity(U128(remove_lp_amount), U128(1000), U128(1000));
         assert_eq!(market.lp_balance_of(alice()).0, alice_lp - remove_lp_amount);
+    }
+
+    #[test]
+    fn test_amm_yt_swaps_buy_and_sell() {
+        let expiry_ns = 1_000_000_000 + 90 * 86_400 * 1_000_000_000;
+        let mut market = init_market(expiry_ns);
+
+        // 1. Alice seeds pool liquidity: 100 PT + 100 LST
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let _ = market.ft_on_transfer(
+            alice(),
+            U128(200 * ONE_LST),
+            "{\"action\":\"mint_py\"}".to_string(),
+        );
+
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let _ = market.ft_on_transfer(
+            alice(),
+            U128(100 * ONE_LST),
+            "{\"action\":\"add_liquidity\",\"pt_desired\":\"100000000000000000000000000\",\"min_lp_out\":\"1000\"}".to_string(),
+        );
+
+        // 2. Bob previews buying YT with 2 LST
+        let preview_buy = market.preview_swap_exact_sy_for_yt(U128(2 * ONE_LST));
+        assert!(preview_buy.amount_out.0 > 0, "Expected non-zero YT out");
+
+        // 3. Bob executes YT buy via ft_on_transfer
+        set_context(lst(), 0, 1_000_000_000, 1);
+        let buy_res = market.ft_on_transfer(
+            bob(),
+            U128(2 * ONE_LST),
+            "{\"action\":\"swap_exact_sy_for_yt\",\"min_yt_out\":\"1000\"}".to_string(),
+        );
+        match buy_res {
+            PromiseOrValue::Value(v) => assert_eq!(v.0, 0),
+            _ => panic!("Expected Value(0)"),
+        }
+        let bob_yt = market.yt_balance_of(bob()).0;
+        assert_eq!(bob_yt, preview_buy.amount_out.0);
+
+        // 4. Bob previews selling 5 YT
+        let yt_to_sell = 5 * ONE_LST;
+        let preview_sell = market.preview_swap_exact_yt_for_sy(U128(yt_to_sell));
+        assert!(preview_sell.amount_out.0 > 0, "Expected positive SY return from YT sell");
+
+        // 5. Bob executes YT sell
+        set_context(bob(), 1, 1_000_000_000, 1);
+        let _sell_promise = market.swap_exact_yt_for_sy(U128(yt_to_sell), U128(1000));
+        assert_eq!(market.yt_balance_of(bob()).0, bob_yt - yt_to_sell);
     }
 }

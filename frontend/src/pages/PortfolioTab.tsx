@@ -266,10 +266,10 @@ export const PortfolioTab: React.FC<PortfolioTabProps> = ({ onTxUpdate, onNaviga
               </div>
             </div>
             <button
-              onClick={() => onNavigateTab('mint-redeem')}
+              onClick={() => onNavigateTab('long')}
               className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1"
             >
-              <span>Mint more</span>
+              <span>Trade YT</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

@@ -54,7 +54,7 @@ export interface MarketHistoryPoint {
   tvl_near: number;
 }
 
-export type ActiveTab = 'fix' | 'pool' | 'mint-redeem' | 'portfolio';
+export type ActiveTab = 'fix' | 'long' | 'pool' | 'mint-redeem' | 'portfolio';
 
 export interface TxStatus {
   status: 'idle' | 'pending' | 'success' | 'error';

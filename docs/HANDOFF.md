@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Step 9 complete (Frontend: React 19 + Vite + TypeScript + Tailwind CSS v4 + Recharts + @hot-labs/near-connect with Fix Yield, Pool, Mint/Redeem, and Portfolio tabs). Ready for Step 10 (YT swaps F7 + Long yield tab).
+- **Phase:** Step 10 complete (YT swaps F7 + Long yield tab: exodus-math binary search solver & exact-in math, market contract swap_exact_sy_for_yt & swap_exact_yt_for_sy with previews, LongYieldTab UI with leverage & break-even APY). Ready for Step 11 (Intents tab with dry-run F13).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
 
@@ -127,6 +127,7 @@ Environment variables (planned):
 | 6 Nov 2026 | Ayoub + Buoya | Step 7 (Automated testnet deployment & liquidity seeding scripts `deploy_testnet.ps1`/`.sh` and demo yield advance `demo_advance.ps1`/`.sh` configured for `fond-buoya.testnet`) complete | Step 8 (Backend: keeper, indexer, API) |
 | 9 Nov 2026 | Ayoub + Buoya | Step 8 (Backend service: Axum REST API, PostgreSQL schema & SQLx migrations, NEAR JSON-RPC client, periodic Indexer, Keeper freshness checks, 1Click Intents proxy + unit tests) complete | Step 9 (Frontend: React 19 + Vite + NEAR Connect) |
 | 9 Nov 2026 | Ayoub + Buoya | Step 9 (Frontend: React 19 + Vite + TypeScript + Tailwind CSS v4 + Recharts + @hot-labs/near-connect with Fix Yield, Pool, Mint/Redeem, and Portfolio tabs) complete | Step 10 (YT swaps F7 + Long yield tab) |
+| 9 Nov 2026 | Ayoub + Buoya | Step 10 (YT swaps F7 + Long yield tab: exodus-math solver, market contract flash mint/redeem methods & previews, LongYieldTab UI) complete | Step 11 (Intents tab with dry-run F13) |
 
 ---
 
