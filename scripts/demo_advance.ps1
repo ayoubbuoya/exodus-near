@@ -29,9 +29,44 @@ Write-Host "==========================================================" -Foregro
 $MockLstAccount    = "mock-lst.$RootAccount"
 $DemoMarketAccount = "demo-market.$RootAccount"
 
+function Invoke-ContractTx {
+    param(
+        [string]$Account,
+        [string]$Method,
+        [string]$JsonArgs = "{}",
+        [string]$Gas = "50.0 Tgas",
+        [string]$Deposit = "0 NEAR",
+        [string]$Signer = $RootAccount
+    )
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    try {
+        [System.IO.File]::WriteAllText($tmpFile, $JsonArgs, $utf8NoBom)
+        near contract call-function as-transaction $Account $Method file-args $tmpFile prepaid-gas $Gas attached-deposit $Deposit sign-as $Signer network-config $Network sign-with-keychain send
+    } finally {
+        if (Test-Path $tmpFile) { Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+function Invoke-ContractView {
+    param(
+        [string]$Account,
+        [string]$Method,
+        [string]$JsonArgs = "{}"
+    )
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    try {
+        [System.IO.File]::WriteAllText($tmpFile, $JsonArgs, $utf8NoBom)
+        near contract call-function as-read-only $Account $Method file-args $tmpFile network-config $Network now
+    } finally {
+        if (Test-Path $tmpFile) { Remove-Item $tmpFile -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 # 1. Fetch Current MockLST Rate
 Write-Host "`n[1/4] Reading Current MockLST Exchange Rate..." -ForegroundColor Green
-$rateOutput = near contract call-function as-read-only $MockLstAccount get_rate json-args '{}' network-config $Network now
+$rateOutput = Invoke-ContractView -Account $MockLstAccount -Method "get_rate" -JsonArgs "{}"
 Write-Host "Raw Rate Output: $rateOutput" -ForegroundColor Gray
 
 # Extract numeric rate string (handles quoted or raw JSON string)
@@ -53,21 +88,21 @@ Write-Host "`n[2/4] Bumping Rate by +$IncreasePercent%..." -ForegroundColor Gree
 Write-Host "New Rate: $newRateStr" -ForegroundColor Yellow
 
 $setRateArgs = "{`"new_rate`":`"$newRateStr`"}"
-near contract call-function as-transaction $MockLstAccount set_rate json-args $setRateArgs prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+Invoke-ContractTx -Account $MockLstAccount -Method "set_rate" -JsonArgs $setRateArgs -Gas "30.0 Tgas"
 
 # 3. Call refresh_index on Demo Market
 Write-Host "`n[3/4] Calling refresh_index() on Demo Market..." -ForegroundColor Green
-near contract call-function as-transaction $DemoMarketAccount refresh_index json-args '{}' prepaid-gas '80.0 Tgas' attached-deposit '0 NEAR' sign-as $RootAccount network-config $Network sign-with-keychain send
+Invoke-ContractTx -Account $DemoMarketAccount -Method "refresh_index" -JsonArgs "{}" -Gas "80.0 Tgas"
 
 # 4. View Updated State
 Write-Host "`n[4/4] Verifying Updated Market & User Yield Position..." -ForegroundColor Green
 
 Write-Host "`n--- Updated Demo Market View ---" -ForegroundColor Yellow
-near contract call-function as-read-only $DemoMarketAccount get_market json-args '{}' network-config $Network now
+Invoke-ContractView -Account $DemoMarketAccount -Method "get_market" -JsonArgs "{}"
 
 Write-Host "`n--- User Position & Accrued Yield ($RootAccount) ---" -ForegroundColor Yellow
 $userArgs = "{`"account_id`":`"$RootAccount`"}"
-near contract call-function as-read-only $DemoMarketAccount get_user json-args $userArgs network-config $Network now
+Invoke-ContractView -Account $DemoMarketAccount -Method "get_user" -JsonArgs $userArgs
 
 Write-Host "`n==========================================================" -ForegroundColor Cyan
 Write-Host "         YIELD ADVANCE SIMULATION COMPLETE!              " -ForegroundColor Cyan
