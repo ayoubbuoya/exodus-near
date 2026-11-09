@@ -8,9 +8,10 @@ import { Wallet, LogOut, ChevronDown, Sparkles, ExternalLink } from 'lucide-reac
 
 interface NavbarProps {
   onTxUpdate?: (tx: TxStatus) => void;
+  onOpenJudgeTour?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onTxUpdate }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onTxUpdate, onOpenJudgeTour }) => {
   const { accountId, isConnected, isConnecting, connect, disconnect, executeTransaction } = useWallet();
   const { selectedMarket, setSelectedMarket, refresh } = useMarket();
   const [isClaimingFaucet, setIsClaimingFaucet] = useState<boolean>(false);
@@ -110,8 +111,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onTxUpdate }) => {
           )}
         </div>
 
-        {/* Right: Faucet button, Network status & Wallet Button */}
-        <div className="flex items-center space-x-3">
+        {/* Right: Judge Tour, Faucet button, Network status & Wallet Button */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Judge Tour Button */}
+          <button
+            onClick={onOpenJudgeTour}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-semibold text-xs transition shadow-sm active:scale-95"
+            title="Start the 60-second interactive protocol tour"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">⚡ Judge Tour</span>
+            <span className="sm:hidden">Tour</span>
+          </button>
+
           {/* Demo Faucet Button */}
           {selectedMarket.isDemo && (
             <button

@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { MarketStats } from './components/MarketStats';
 import { ApyChart } from './components/ApyChart';
 import { TxModal } from './components/TxModal';
+import { JudgeTourModal } from './components/JudgeTourModal';
 import { FixYieldTab } from './pages/FixYieldTab';
 import { LongYieldTab } from './pages/LongYieldTab';
 import { PoolTab } from './pages/PoolTab';
@@ -15,6 +16,7 @@ import { TrendingUp, Zap, Droplets, Split, Briefcase, Globe } from 'lucide-react
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('fix');
   const [txStatus, setTxStatus] = useState<TxStatus>({ status: 'idle' });
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
 
   const tabs = [
     { id: 'fix' as ActiveTab, label: 'Fix Yield', icon: TrendingUp, desc: 'Buy & Sell PT' },
@@ -28,7 +30,7 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       {/* Top Navbar */}
-      <Navbar onTxUpdate={setTxStatus} />
+      <Navbar onTxUpdate={setTxStatus} onOpenJudgeTour={() => setIsTourOpen(true)} />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -77,6 +79,13 @@ export const App: React.FC = () => {
 
       {/* Global Transaction Status Modal */}
       <TxModal tx={txStatus} onClose={() => setTxStatus({ status: 'idle' })} />
+
+      {/* Interactive Protocol Judge Tour */}
+      <JudgeTourModal
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onNavigateTab={setActiveTab}
+      />
 
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-8 text-xs text-slate-500">

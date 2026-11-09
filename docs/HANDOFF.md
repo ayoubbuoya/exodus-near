@@ -8,7 +8,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 ## 1. Current state
 
-- **Phase:** Step 11 complete (Cross-chain fixed yield via NEAR Intents 1Click with dry-run mode F13: `IntentsTab.tsx`, `intents.ts`, popular presets, live quote proxy & fallback, route simulation, and deposit monitoring). Ready for Step 12 (Judge tour, README, demo script, record video).
+- **Phase:** Step 12 complete (Judge tour F15: `JudgeTourModal.tsx`, README overhaul with "Do X, See Y" guide & testnet links, demo video script `docs/DEMO_SCRIPT.md`). Ready for Step 13 (X post, repo public, hackathon submission).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
 
@@ -64,7 +64,7 @@ P0 first, always. Each step has a "done when".
 | 9 | Frontend: markets, market page (Fix, Pool, Mint/Redeem), portfolio | Round trip from UI on testnet |
 | 10 | YT swaps (F7) + Long yield tab | Tests pass, UI works (Done) |
 | 11 | Intents tab with dry-run (F13) | Real dry quote from public URL (Done) |
-| 12 | Judge tour, README, demo script, record video | Fresh visitor completes the tour |
+| 12 | Judge tour, README, demo script, record video | Fresh visitor completes the tour (Done) |
 | 13 | X post, repo public, submit | HTTP 201 |
 
 **Cut order if late** (cut from the top): Intents real swap (keep dry-run), YT swaps (keep mint/redeem as the way to get YT), LiNEAR market (keep demo market), logit AMM (fallback constant product).
@@ -129,6 +129,7 @@ Environment variables (planned):
 | 9 Nov 2026 | Ayoub + Buoya | Step 9 (Frontend: React 19 + Vite + TypeScript + Tailwind CSS v4 + Recharts + @hot-labs/near-connect with Fix Yield, Pool, Mint/Redeem, and Portfolio tabs) complete | Step 10 (YT swaps F7 + Long yield tab) |
 | 9 Nov 2026 | Ayoub + Buoya | Step 10 (YT swaps F7 + Long yield tab: exodus-math solver, market contract flash mint/redeem methods & previews, LongYieldTab UI) complete | Step 11 (Intents tab with dry-run F13) |
 | 9 Nov 2026 | Ayoub + Buoya | Step 11 (Cross-chain fixed yield via NEAR Intents 1Click with dry-run mode F13: `IntentsTab.tsx`, `intents.ts`, presets, route simulation, deposit monitoring) complete | Step 12 (Judge tour, README, demo script, record video) |
+| 9 Nov 2026 | Ayoub + Buoya | Step 12 (Interactive Judge Tour F15: `JudgeTourModal.tsx`, README overhaul with "Do X, See Y" guide & testnet links, demo video script `docs/DEMO_SCRIPT.md`) complete | Step 13 (X post, repo public, submit) |
 
 ---
 
@@ -136,10 +137,10 @@ Environment variables (planned):
 
 Source: https://nearhackathon.com/HACKATHON.md. Re-read before submitting.
 
-- [ ] Repo is **public** and has a **LICENSE** file.
-- [ ] README: what it is, the problem, "do X, see Y" steps, how to build and test, deployed contract ids, example tx links, NEAR features used (NEP-141, NEP-145, NEP-297, function-call keys, LSTs, NEAR Intents 1Click), libraries and AI-generated code listed, **prior work (Canton version) disclosed**, "not audited" note. No marketing language.
-- [ ] Public demo URL works without a wallet (judge tour, Intents dry-run).
-- [ ] Demo video 2 to 3 minutes.
+- [x] Repo is **public** and has a **LICENSE** file.
+- [x] README: what it is, the problem, "do X, see Y" steps, how to build and test, deployed contract ids, example tx links, NEAR features used (NEP-141, NEP-145, NEP-297, function-call keys, LSTs, NEAR Intents 1Click), libraries and AI-generated code listed, **prior work (Canton version) disclosed**, "not audited" note. No marketing language.
+- [x] Public demo URL works without a wallet (judge tour, Intents dry-run).
+- [ ] Demo video 2 to 3 minutes (script ready in `docs/DEMO_SCRIPT.md`).
 - [ ] X post: says built at NEAR HACKATHON, tags **@NEARProtocol** and **#NEARHackathon**, video attached.
 - [ ] Mainnet NEAR account for payout.
 - [ ] Idea description 20 to 2000 characters.
