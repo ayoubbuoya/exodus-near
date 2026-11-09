@@ -12,7 +12,6 @@ Welcome to Exodus on NEAR. This file provides guidelines, architectural context,
   - **Single Contract AMM:** Each market contract is its own PT NEP-141 token, holds the YT ledger, and executes logit curve AMM swaps.
 - **Hackathon:** Built for the **NEAR HACKATHON** (submission deadline: 14 Nov 2026, 23:59 UTC).
 - **Mandatory Disclosures:**
-  - **Fondouk:** AI town of DeFi agents by the same author in the same hackathon. Both READMEs must disclose each other.
   - **Exodus on Canton:** Prior hackathon submission (Daml, permissioned, HackCanton S3 2nd place). The NEAR codebase is a complete rewrite. Disclose in README.
 
 ---

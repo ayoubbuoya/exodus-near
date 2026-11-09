@@ -41,8 +41,6 @@ Judges listed on the site: Illia Polosukhin, Eddy Lazzarin, Mert Mumtaz, Avichal
 5. Team details: project name, lead name, email, team size, tracks.
 
 ### Important rules for this project
-- **Two projects by one person is allowed.** One person can submit up to 2 independent projects, if **each README discloses the other** (rule Q-015). Ayoub is also building **Fondouk** (AI town of DeFi agents). Exodus README must mention Fondouk and Fondouk README must mention Exodus. This uses the full quota: no third project.
-- **Max 2 submissions per email.** Same reason, both are used.
 - **Existing projects:** only new work in the window is judged, and old work must be disclosed (Q-002, Q-004). See section 7.
 - **Libraries and AI-generated code** are allowed if listed in the README (Q-005).
 - **Testnet-only projects are eligible**, except where the integration is mainnet-only (Q-010). **NEAR Intents has no testnet**: use mainnet with separate dev accounts and tiny amounts (Q-007).
@@ -104,7 +102,7 @@ Final list decided at submission time, based on what actually shipped.
 - **NEP-297 events** make indexing trades and rates simple.
 - **NEAR Intents (1Click)** brings users and liquidity from other chains without a bridge UI.
 - **Account model and access keys**: the keeper bot only holds a function-call key limited to `refresh_index`, it cannot move funds.
-- Fixed-rate PT is a building block for other NEAR apps: lending markets can accept PT as collateral, DAOs can park treasury at a fixed rate, and AI agents (for example Fondouk characters) can buy fixed yield.
+- Fixed-rate PT is a building block for other NEAR apps: lending markets can accept PT as collateral, DAOs can park treasury at a fixed rate, and AI agents can buy fixed yield.
 
 ## 6. Scope
 
@@ -121,7 +119,7 @@ Final list decided at submission time, based on what actually shipped.
 - Permissionless market factory.
 - YT as its own NEP-141 token.
 - Permissioned "institutional" markets with an allowlist (the original Canton design).
-- PT as collateral on Rhea Lend.
+- PT as collateral on lending protocols (e.g. money markets).
 - Stablecoin yield markets (when NEAR has a yield-bearing stablecoin with an on-chain rate).
 - Contract-owned cross-chain accounts with Chain Signatures.
 

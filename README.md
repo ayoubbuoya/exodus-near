@@ -8,7 +8,6 @@
 ## 1. Disclosures & Attribution
 
 - **Hackathon Entry:** Built for the **NEAR HACKATHON** (Deadline: 14 Nov 2026). Primary track: **DeFi**.
-- **Sister Project Disclosure (Rule Q-015):** Created by the same author as **Fondouk** (AI town of autonomous DeFi agents on NEAR). Both projects are developed concurrently for this hackathon and disclose each other.
 - **Prior Work Disclosure:** Inspired by *Exodus on Canton* (Daml smart contracts, permissioned privacy, 2nd place winner at HackCanton S3). This repository is a clean, permissionless rewrite purpose-built for the NEAR ecosystem and NEAR's asynchronous cross-contract model.
 
 ---

@@ -149,7 +149,7 @@ Assumption to confirm: these return the NEAR value of 1 LST as a `U128` string w
 
 ```
 exodus-near/
-  README.md                 # for humans and AI judges: what, why, "do X, see Y", prior work, Fondouk disclosure
+  README.md                 # for humans and AI judges: what, why, "do X, see Y", prior work
   LICENSE                   # required by the hackathon
   docs/
     overview.md
@@ -394,6 +394,5 @@ Hosting: frontend on Vercel (static). Backend + Postgres on one small VPS or Rai
 | Binary search swaps too expensive in gas | Swaps fail | Medium | Off-chain hint + narrow on-chain search; benchmark early. |
 | LST testnet contracts missing or not updating rate | No real-yield market on testnet | Medium | MockLST demo market always works; real LST market on mainnet with cap as backup. |
 | 1Click is mainnet only, needs API key | Intents feature only in dry-run | Medium | Dry-run is enough for judges; one real tiny swap for proof. |
-| Building Fondouk in parallel | Both unfinished | High | Strict P0 list. Cut order in `HANDOFF.md`. |
 | Fresh SDK releases (near-sdk 5.30.1, cargo-near 0.23.0 released this week) | Build breaks | Low-Medium | Pin previous minor if needed. |
 | Fallback if logit AMM is not ready | No trading | Low | Ship a constant-product PT/SY pool, labeled as such, and keep logit in a branch. Tokenization + redemption alone still demo the core idea. |

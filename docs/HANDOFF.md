@@ -10,7 +10,6 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 
 - **Phase:** Step 7 deployment and simulation scripts created for testnet root `fond-buoya.testnet` (`deploy_testnet.ps1`, `deploy_testnet.sh`, `demo_advance.ps1`, `demo_advance.sh`). Ready for Step 8 (Backend: keeper, indexer, API).
 - **Hackathon:** NEAR HACKATHON, deadline 14 Nov 2026 23:59 UTC. Public repo + LICENSE + X demo post + one submission.
-- **Sister project:** Fondouk (AI town of DeFi agents), same author, same hackathon. Both READMEs must disclose the other (rule Q-015).
 - **Prior work:** Exodus on Canton (Daml, permissioned, HackCanton S3 2nd place). NEAR version is a rewrite. Disclose in README.
 
 ---
@@ -28,7 +27,7 @@ For anyone joining (teammate or coding agent): read this file first, then `overv
 | D7 | Index refresh by a permissionless method + keeper; ops need an index from the current epoch | NEAR view calls from contracts are async. LST rates change once per epoch, so "same epoch" is a safe freshness rule. |
 | D8 | Owner creates markets (factory is P2) | Less code, safer parameters. |
 | D9 | NEAR Intents 1Click for cross-chain entry, with dry-run | The DeFi track hints at Intents; dry-run lets judges test without funds. |
-| D10 | Stack: Rust contracts (near-sdk 5.30.1), Rust backend (axum, sqlx, near-api), React + Vite frontend, NEAR Connect | Ayoub's strengths; same as Fondouk so tooling is shared. |
+| D10 | Stack: Rust contracts (near-sdk 5.30.1), Rust backend (axum, sqlx, near-api), React + Vite frontend, NEAR Connect | Ayoub's strengths and familiar stack. |
 | D11 | Tracks: `defi` primary; `realworld` or `open` optional | Decide at submission from what shipped. |
 
 ---
@@ -134,14 +133,14 @@ Environment variables (planned):
 Source: https://nearhackathon.com/HACKATHON.md. Re-read before submitting.
 
 - [ ] Repo is **public** and has a **LICENSE** file.
-- [ ] README: what it is, the problem, "do X, see Y" steps, how to build and test, deployed contract ids, example tx links, NEAR features used (NEP-141, NEP-145, NEP-297, function-call keys, LSTs, NEAR Intents 1Click), libraries and AI-generated code listed, **prior work (Canton version) disclosed**, **Fondouk disclosed**, "not audited" note. No marketing language.
+- [ ] README: what it is, the problem, "do X, see Y" steps, how to build and test, deployed contract ids, example tx links, NEAR features used (NEP-141, NEP-145, NEP-297, function-call keys, LSTs, NEAR Intents 1Click), libraries and AI-generated code listed, **prior work (Canton version) disclosed**, "not audited" note. No marketing language.
 - [ ] Public demo URL works without a wallet (judge tour, Intents dry-run).
 - [ ] Demo video 2 to 3 minutes.
 - [ ] X post: says built at NEAR HACKATHON, tags **@NEARProtocol** and **#NEARHackathon**, video attached.
 - [ ] Mainnet NEAR account for payout.
 - [ ] Idea description 20 to 2000 characters.
 - [ ] Tracks chosen (`defi` + optional).
-- [ ] Submitted once before 14 Nov 2026 23:59 UTC. Same email may be used for max 2 submissions (Exodus + Fondouk). Do not fill a `website` field.
+- [ ] Submitted once before 14 Nov 2026 23:59 UTC. Do not fill a `website` field.
 
 ---
 
