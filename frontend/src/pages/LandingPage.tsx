@@ -14,6 +14,7 @@ import {
 import { Brand, Mark } from '../components/Brand';
 import { GlassInstrument } from '../components/GlassInstrument';
 import { APP_CONFIG } from '../config';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const faqs = [
   [
@@ -73,6 +74,7 @@ export default function LandingPage() {
             <a href="#markets">Markets</a>
           </div>
           <div className="nav-actions">
+            <ThemeToggle />
             <a className="button button-bright button-small" href="#/app/fix">
               Launch app <ArrowUpRight size={15} />
             </a>
@@ -93,6 +95,9 @@ export default function LandingPage() {
             className="mobile-nav"
             aria-label="Mobile navigation"
           >
+            <div className="mobile-theme-row">
+              <ThemeToggle />
+            </div>
             {[
               ['How it works', 'how-it-works'],
               ['Strategies', 'strategies'],

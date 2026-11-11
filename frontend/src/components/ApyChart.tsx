@@ -124,37 +124,45 @@ export function ApyChart() {
             >
               <defs>
                 <linearGradient id="yield-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#b9cce9" stopOpacity={0.13} />
-                  <stop offset="100%" stopColor="#b9cce9" stopOpacity={0} />
+                  <stop
+                    offset="0%"
+                    stopColor="var(--chart-fixed)"
+                    stopOpacity={0.13}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--chart-fixed)"
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
-              <CartesianGrid vertical={false} stroke="#ffffff0a" />
+              <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
               <XAxis
                 dataKey="timestamp"
                 type="number"
                 domain={['dataMin', 'dataMax']}
                 tickFormatter={timeLabel}
-                stroke="#7c8ca4"
+                stroke="var(--chart-axis)"
                 tickLine={false}
                 axisLine={false}
-                fontSize={9}
+                fontSize={12}
                 minTickGap={60}
               />
               <YAxis
                 tickFormatter={(n: number) => `${n}%`}
-                stroke="#7c8ca4"
+                stroke="var(--chart-axis)"
                 tickLine={false}
                 axisLine={false}
-                fontSize={9}
+                fontSize={12}
                 domain={[0, 'auto']}
               />
               <Tooltip
                 contentStyle={{
-                  background: '#152031',
-                  border: '1px solid #ffffff24',
+                  background: 'var(--panel)',
+                  border: '1px solid var(--line-strong)',
                   borderRadius: 10,
-                  fontSize: 11,
-                  color: '#eef2fa',
+                  fontSize: 14,
+                  color: 'var(--text)',
                 }}
                 labelFormatter={(value) =>
                   new Date(Number(value)).toLocaleString()
@@ -168,7 +176,7 @@ export function ApyChart() {
                 dataKey="implied_apy"
                 name="Implied fixed APY"
                 type="monotone"
-                stroke="#d0daeb"
+                stroke="var(--chart-fixed)"
                 fill="url(#yield-fill)"
                 strokeWidth={2}
                 dot={points.length === 1}
@@ -178,7 +186,7 @@ export function ApyChart() {
                 dataKey="underlying_apy"
                 name="Staking benchmark"
                 type="monotone"
-                stroke="#80aaff"
+                stroke="var(--yield)"
                 strokeDasharray="4 5"
                 dot={false}
                 strokeWidth={1.5}
