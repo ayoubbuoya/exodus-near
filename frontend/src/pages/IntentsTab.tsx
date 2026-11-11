@@ -15,6 +15,20 @@ import {
 import { formatUnits, parseTokenUnits } from '../lib/formatters';
 import type { OneClickQuote, OneClickToken } from '../types';
 
+function chainLabel(chain: string) {
+  return (
+    (
+      {
+        eth: 'Ethereum',
+        arb: 'Arbitrum',
+        arbitrum: 'Arbitrum',
+        base: 'Base',
+        sol: 'Solana',
+      } as Record<string, string>
+    )[chain] || chain
+  );
+}
+
 export function IntentsTab() {
   const [tokens, setTokens] = useState<OneClickToken[]>(POPULAR_TOKENS);
   const [token, setToken] = useState(POPULAR_TOKENS[0]);
@@ -26,15 +40,20 @@ export function IntentsTab() {
     let active = true;
     void fetchSupportedTokens().then((data) => {
       if (active) {
-        const merged = new Map(
-          [...POPULAR_TOKENS, ...data].map((t) => [t.assetId, t]),
+        const supported = data.filter(
+          (t) =>
+            ['eth', 'arb', 'arbitrum', 'base', 'sol'].includes(t.blockchain) &&
+            ['USDC', 'ETH', 'SOL', 'USDT'].includes(t.symbol),
         );
-        setTokens(
-          [...merged.values()].filter(
-            (t) =>
-              ['eth', 'arbitrum', 'base', 'sol'].includes(t.blockchain) &&
-              ['USDC', 'ETH', 'SOL', 'USDT'].includes(t.symbol),
-          ),
+        const choices = [
+          ...new Map(
+            [...POPULAR_TOKENS, ...supported].map((t) => [t.assetId, t]),
+          ).values(),
+        ];
+        setTokens(choices);
+        setToken(
+          (current) =>
+            choices.find((t) => t.assetId === current.assetId) || current,
         );
       }
     });
@@ -89,7 +108,7 @@ export function IntentsTab() {
         <div className="route-story">
           <span>
             <Globe size={16} />
-            {token.blockchain.toUpperCase()}
+            {chainLabel(token.blockchain).toUpperCase()}
           </span>
           <ArrowRight size={17} />
           <span>NEAR INTENTS</span>
@@ -162,7 +181,7 @@ export function IntentsTab() {
           >
             {tokens.map((t) => (
               <option value={t.assetId} key={t.assetId}>
-                {t.symbol} · {t.blockchain}
+                {t.symbol} · {chainLabel(t.blockchain)}
               </option>
             ))}
           </select>

@@ -1,5 +1,6 @@
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
+import { parseUnits } from '../lib/formatters';
 
 export function AmountField({
   label,
@@ -17,6 +18,13 @@ export function AmountField({
   onMax?: () => void;
 }) {
   const id = useId();
+  let validation: string | null = null;
+  try {
+    parseUnits(value);
+  } catch (error) {
+    validation =
+      error instanceof Error ? error.message : 'Enter a valid decimal amount.';
+  }
   return (
     <div className="amount-field">
       <div className="amount-label">
@@ -41,6 +49,8 @@ export function AmountField({
           spellCheck={false}
           placeholder="0.00"
           value={value}
+          aria-invalid={!!validation}
+          aria-describedby={validation ? `${id}-error` : undefined}
           onChange={(e) => onChange(e.target.value)}
         />
         <span className={`amount-token ${token === 'YT' ? 'yield-ink' : ''}`}>
@@ -52,6 +62,11 @@ export function AmountField({
           {token}
         </span>
       </div>
+      {validation && (
+        <p id={`${id}-error`} className="field-error" role="alert">
+          {validation}
+        </p>
+      )}
     </div>
   );
 }

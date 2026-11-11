@@ -16,7 +16,8 @@ import {
   Menu,
   X,
 } from 'lucide-react';
-import { WalletProvider } from '../context/WalletContext';
+import { WalletProvider, useWallet } from '../context/WalletContext';
+import { useProtocolAction } from '../hooks/useProtocolAction';
 import { MarketProvider, useMarket } from '../context/MarketContext';
 import { Brand, Mark } from '../components/Brand';
 import { Navbar } from '../components/Navbar';
@@ -33,7 +34,11 @@ import { APP_CONFIG } from '../config';
 import { appHref } from '../lib/navigation';
 import type { ActiveTab, TxStatus } from '../types';
 
-const ApyChart = lazy(() => import('../components/ApyChart').then((module) => ({ default: module.ApyChart })));
+const ApyChart = lazy(() =>
+  import('../components/ApyChart').then((module) => ({
+    default: module.ApyChart,
+  })),
+);
 
 const tabs = [
   {
@@ -310,7 +315,15 @@ function Workspace({
           {tab === 'fix' || tab === 'long' ? (
             <div className="trade-layout">
               <div className="market-insights">
-              <Suspense fallback={<div className="chart-panel chart-empty">Loading yield history…</div>}><ApyChart /></Suspense>
+                <Suspense
+                  fallback={
+                    <div className="chart-panel chart-empty">
+                      Loading yield history…
+                    </div>
+                  }
+                >
+                  <ApyChart key={selectedMarket.id} />
+                </Suspense>
                 <div className="insight-note">
                   <span
                     className={`token-symbol ${tab === 'fix' ? 'pt-symbol' : 'yt-symbol'}`}
@@ -388,8 +401,6 @@ function MarketTools({ onTxUpdate }: { onTxUpdate: (tx: TxStatus) => void }) {
   );
 }
 
-import { useWallet } from '../context/WalletContext';
-import { useProtocolAction } from '../hooks/useProtocolAction';
 function ProtocolTools({
   onTxUpdate,
   onRefresh,

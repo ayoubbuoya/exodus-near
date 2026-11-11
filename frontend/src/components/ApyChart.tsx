@@ -108,6 +108,13 @@ export function ApyChart() {
             <Activity size={24} />
             <span>No snapshots in this time range.</span>
             <span>Indexed history appears here as the keeper records it.</span>
+            <button
+              className="text-link"
+              onClick={() => setRetry((count) => count + 1)}
+            >
+              <RefreshCw size={12} />
+              Refresh history
+            </button>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -183,7 +190,13 @@ export function ApyChart() {
       </div>
       <div className="chart-footer">
         <span>*Backend benchmark, not a measured staking return.</span>
-        <span>
+        <span
+          title={
+            data.length
+              ? `Last indexed: ${new Date(data[data.length - 1].recorded_at).toLocaleString()}`
+              : undefined
+          }
+        >
           {data.length ? `${data.length} indexed snapshots` : 'Exodus indexer'}
         </span>
       </div>

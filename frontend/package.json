@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/unit.test.mjs",
+    "test:browser": "node tests/browser-smoke.mjs"
   },
   "dependencies": {
     "@hot-labs/near-connect": "^0.12.0",

@@ -17,7 +17,7 @@ export function Navbar({ title }: { title: string }) {
           <span className="status-dot" /> NEAR Testnet
         </span>
         {accountId ? (
-          <>
+          <div className="wallet-connected">
             <a
               className="wallet-account"
               href={`${APP_CONFIG.explorerUrl}/address/${accountId}`}
@@ -35,7 +35,7 @@ export function Navbar({ title }: { title: string }) {
             >
               <LogOut size={15} />
             </button>
-          </>
+          </div>
         ) : (
           <button
             className="button button-bright button-small"

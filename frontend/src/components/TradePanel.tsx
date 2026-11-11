@@ -65,7 +65,10 @@ export function TradePanel({
   const matured =
     Date.now() >= (marketData?.expiry_ns || selectedMarket.expiryNs) / 1e6;
   const paused = marketData?.paused;
-  const apy = calcImpliedApyPercent(poolData?.last_ln_implied_rate);
+  const apy =
+    poolData && BigInt(poolData.total_lp) > 0n
+      ? calcImpliedApyPercent(poolData.last_ln_implied_rate)
+      : NaN;
   const minOut = activeQuote
     ? (BigInt(activeQuote.amount_out) * BigInt(10000 - slippage)) / 10000n
     : 0n;

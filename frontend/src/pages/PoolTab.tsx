@@ -82,7 +82,13 @@ export function PoolTab({
       await connect();
       return;
     }
-    if (invalid || insufficient || blocked) return;
+    if (
+      invalid ||
+      insufficient ||
+      blocked ||
+      (mode === 'add' && !balancesReady)
+    )
+      return;
     await run(
       mode === 'add' ? 'Add liquidity' : 'Remove liquidity',
       async () => {

@@ -65,7 +65,13 @@ export function MintRedeemTab({
       await connect();
       return;
     }
-    if (input <= 0n || insufficient || blocked) return;
+    if (
+      input <= 0n ||
+      insufficient ||
+      blocked ||
+      (mode === 'mint' && !balancesReady)
+    )
+      return;
     await run(mode === 'mint' ? 'Split LST' : 'Redeem tokens', async () => {
       const tx =
         mode === 'mint'
