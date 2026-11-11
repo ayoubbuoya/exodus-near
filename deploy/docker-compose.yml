@@ -1,0 +1,64 @@
+# Exodus on NEAR: backend + PostgreSQL for the VPS.
+#
+# Runs as its own compose project ("exodus-near"), separate from the existing
+# "exodus-prod" project. The existing nginx reaches the backend through the
+# shared Docker network named by PROXY_NETWORK.
+#
+# Usage (from the repo root on the VPS):
+#   cp deploy/.env.example deploy/.env && chmod 600 deploy/.env   # then fill it in
+#   docker compose -f deploy/docker-compose.yml up -d --build
+name: exodus-near
+
+services:
+  backend:
+    build:
+      context: ..                   # repo root: the backend is a workspace member
+      dockerfile: backend/Dockerfile
+    image: exodus-near-backend:latest
+    # nginx proxies to this exact name, so keep it stable.
+    container_name: exodus-near-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3001"
+      # Built here so the password lives in one place (POSTGRES_PASSWORD).
+      # Host "postgres" is the service name below, NOT localhost.
+      DATABASE_URL: postgres://exodus:${POSTGRES_PASSWORD}@postgres:5432/exodus
+    depends_on:
+      postgres:
+        # The backend only starts the indexer and keeper if the DB is reachable
+        # at boot (see backend/src/main.rs), so wait until Postgres is ready.
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    # No "ports:" on purpose: only nginx (over the shared network) can reach it.
+
+  postgres:
+    image: postgres:18
+    container_name: exodus-near-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: exodus
+      POSTGRES_USER: exodus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      # postgres 18+ images expect the volume at /var/lib/postgresql.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exodus -d exodus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal                    # never on the shared network, never published
+
+networks:
+  internal: {}
+  proxy:
+    # Network that already exists and that the nginx container is attached to.
+    external: true
+    name: ${PROXY_NETWORK:-exodus-prod_default}
+
+volumes:
+  pgdata: {}

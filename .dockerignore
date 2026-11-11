@@ -1,0 +1,17 @@
+# Keep the Docker build context small and free of secrets.
+# Build output (can be several GB)
+target
+**/target
+
+# Not needed to build the backend
+frontend
+**/node_modules
+docs
+dev-docs
+.git
+.github
+
+# Secrets must never be baked into an image
+**/.env
+**/.env.*
+!**/.env.example
