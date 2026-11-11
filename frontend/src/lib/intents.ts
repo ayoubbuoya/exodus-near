@@ -95,23 +95,30 @@ export interface RequestQuoteParams {
 /**
  * Requests a swap quote from NEAR Intents 1Click via backend proxy or direct API.
  */
-export async function requestIntentsQuote(params: RequestQuoteParams): Promise<OneClickQuoteResponse> {
+export async function requestIntentsQuote(
+  params: RequestQuoteParams,
+): Promise<OneClickQuoteResponse> {
   const deadline = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  
+
   // Valid non-zero fallback refund address per chain family (1Click rejects 0x00...00)
-  const isSolana = params.originAsset.includes(':sol') || params.originAsset.includes('sol-');
+  const isSolana =
+    params.originAsset.includes(':sol') || params.originAsset.includes('sol-');
   const defaultRefund = isSolana
     ? '4Nd1mBQv2msnmf58R91eQ5xWn6L6p4T4C7qE9pM5eQvQ'
     : '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
 
-  const refundTo = (params.refundAddress && params.refundAddress.trim().length > 0)
-    ? params.refundAddress.trim()
-    : defaultRefund;
+  const refundTo =
+    params.refundAddress && params.refundAddress.trim().length > 0
+      ? params.refundAddress.trim()
+      : defaultRefund;
 
   // For dry-run quotes without a recipient or with a testnet recipient, use 'exodus.near'
-  const recipient = (params.dry || !params.recipientAccountId || params.recipientAccountId.endsWith('.testnet'))
-    ? 'exodus.near'
-    : params.recipientAccountId;
+  const recipient =
+    params.dry ||
+    !params.recipientAccountId ||
+    params.recipientAccountId.endsWith('.testnet')
+      ? 'exodus.near'
+      : params.recipientAccountId;
 
   const payload = {
     dry: params.dry,
@@ -167,15 +174,20 @@ export async function requestIntentsQuote(params: RequestQuoteParams): Promise<O
  */
 export async function checkDepositStatus(depositAddress: string): Promise<any> {
   try {
-    const res = await fetch(`${APP_CONFIG.backendUrl}/intents/status/${encodeURIComponent(depositAddress)}`, {
-      signal: AbortSignal.timeout(4000),
-    });
+    const res = await fetch(
+      `${APP_CONFIG.backendUrl}/intents/status/${encodeURIComponent(depositAddress)}`,
+      {
+        signal: AbortSignal.timeout(4000),
+      },
+    );
     if (res.ok) return await res.json();
   } catch {
     // Fallback direct
   }
 
-  const directRes = await fetch(`https://1click.chaindefuser.com/v0/status/${encodeURIComponent(depositAddress)}`);
+  const directRes = await fetch(
+    `https://1click.chaindefuser.com/v0/status/${encodeURIComponent(depositAddress)}`,
+  );
   if (!directRes.ok) {
     throw new Error(`Failed to check status: ${directRes.statusText}`);
   }

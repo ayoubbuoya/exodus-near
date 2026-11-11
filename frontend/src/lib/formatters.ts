@@ -11,7 +11,10 @@ const FP_ONE = 10n ** 18n;
 /**
  * Converts a 24-decimal yocto string to a human-readable float/string.
  */
-export function formatUnits(amount: string | number | bigint | undefined, decimals = 4): string {
+export function formatUnits(
+  amount: string | number | bigint | undefined,
+  decimals = 4,
+): string {
   if (!amount || amount === '0') return '0';
   try {
     const rawStr = amount.toString();
@@ -21,7 +24,7 @@ export function formatUnits(amount: string | number | bigint | undefined, decima
 
     const whole = big / YOCTO_BASE;
     const remainder = big % YOCTO_BASE;
-    
+
     // Pad remainder to 24 digits
     let remStr = remainder.toString().padStart(24, '0');
     // Truncate to desired display decimals
@@ -39,31 +42,51 @@ export function formatUnits(amount: string | number | bigint | undefined, decima
  * Parses user input (e.g. "1.52") into a 24-decimal yocto string.
  */
 export function parseUnits(input: string): string {
-  if (!input || input.trim() === '') return '0';
+  return parseTokenUnits(input, 24);
+}
+
+export function parseTokenUnits(input: string, decimals: number): string {
   const clean = input.trim();
-  const parts = clean.split('.');
-  const whole = parts[0] || '0';
-  const frac = parts[1] || '';
+  if (!clean) return '0';
+  if (
+    !Number.isInteger(decimals) ||
+    decimals < 0 ||
+    decimals > 36 ||
+    !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(clean)
+  )
+    throw new Error('Enter a valid positive decimal amount.');
+  const [whole = '0', fraction = ''] = clean.split('.');
+  if (fraction.length > decimals)
+    throw new Error(`Use at most ${decimals} decimal places.`);
+  return (
+    BigInt(whole || '0') * 10n ** BigInt(decimals) +
+    BigInt(fraction.padEnd(decimals, '0') || '0')
+  ).toString();
+}
 
-  const wholeBig = BigInt(whole) * YOCTO_BASE;
-  const paddedFrac = frac.padEnd(24, '0').slice(0, 24);
-  const fracBig = BigInt(paddedFrac);
-
-  return (wholeBig + fracBig).toString();
+export function safeAmount(input: string): bigint {
+  try {
+    return BigInt(parseUnits(input));
+  } catch {
+    return 0n;
+  }
 }
 
 /**
  * Formats a 18-decimal index (e.g. 1300000000000000000) to "1.3000".
  */
-export function formatIndex(indexRaw: string | number | undefined, decimals = 4): string {
-  if (!indexRaw || indexRaw === '0') return '1.0000';
+export function formatIndex(
+  indexRaw: string | number | undefined,
+  decimals = 4,
+): string {
+  if (!indexRaw || indexRaw === '0') return '—';
   try {
     const big = BigInt(indexRaw.toString());
     const whole = big / FP_ONE;
     const rem = (big % FP_ONE).toString().padStart(18, '0').slice(0, decimals);
     return `${whole.toString()}.${rem}`;
   } catch {
-    return '1.0000';
+    return '—';
   }
 }
 
@@ -72,14 +95,14 @@ export function formatIndex(indexRaw: string | number | undefined, decimals = 4)
  * r = exp(ln_rate) - 1
  */
 export function calcImpliedApyPercent(lnRateStr: string | undefined): number {
-  if (!lnRateStr) return 8.5; // fallback realistic default
+  if (lnRateStr === undefined) return NaN;
   try {
     const raw = Number(BigInt(lnRateStr)) / 1e18;
-    if (isNaN(raw) || raw <= 0) return 8.5;
+    if (!Number.isFinite(raw) || raw < 0) return NaN;
     const apy = (Math.exp(raw) - 1) * 100;
-    return Math.min(Math.max(apy, 0.1), 100);
+    return Number.isFinite(apy) ? apy : NaN;
   } catch {
-    return 8.5;
+    return NaN;
   }
 }
 
@@ -87,7 +110,7 @@ export function calcImpliedApyPercent(lnRateStr: string | undefined): number {
  * Formats percentage display.
  */
 export function formatPercent(val: number, decimals = 2): string {
-  return `${val.toFixed(decimals)}%`;
+  return Number.isFinite(val) ? `${val.toFixed(decimals)}%` : '—';
 }
 
 /**

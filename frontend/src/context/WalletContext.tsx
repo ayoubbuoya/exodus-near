@@ -1,163 +1,46 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { NearConnector } from '@hot-labs/near-connect';
 import { APP_CONFIG } from '../config';
+import { assertTransactionSucceeded } from '../lib/transactions';
 
-interface ActionCall {
-  type: 'FunctionCall';
-  params: {
-    methodName: string;
-    args: Record<string, any>;
-    gas: string;
-    deposit: string;
-  };
-}
-
+// One connector per app module; Strict Mode must not create duplicate wallet selectors.
+const connector = new NearConnector({ network: APP_CONFIG.networkId as 'testnet' });
 interface WalletContextType {
-  accountId: string | null;
-  isConnected: boolean;
-  isConnecting: boolean;
-  connect: () => Promise<void>;
-  disconnect: () => Promise<void>;
-  executeTransaction: (
-    receiverId: string,
-    methodName: string,
-    args: Record<string, any>,
-    depositYocto?: string,
-    gas?: string
-  ) => Promise<any>;
+  accountId: string | null; isConnected: boolean; isConnecting: boolean; error: string | null;
+  connect: () => Promise<void>; disconnect: () => Promise<void>;
+  executeTransaction: (receiverId: string, methodName: string, args: Record<string, any>, depositYocto?: string, gas?: string) => Promise<any>;
 }
-
 const WalletContext = createContext<WalletContextType | null>(null);
-
-export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function WalletProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
-  const [isConnecting, setIsConnecting] = useState<boolean>(false);
-
-  // Initialize NearConnector
-  const connector = useMemo(() => {
-    return new NearConnector({
-      // Configure testnet
-      network: APP_CONFIG.networkId as 'testnet',
-    });
-  }, []);
-
-  // Sync active account on mount and listen to connector events
+  const [isConnecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    let mounted = true;
-
-    async function checkExistingAuth() {
-      try {
-        const wallet = await connector.wallet();
-        if (wallet) {
-          const accounts = await wallet.getAccounts();
-          if (mounted && accounts && accounts.length > 0) {
-            setAccountId(accounts[0].accountId);
-          }
-        }
-      } catch {
-        // No pre-existing connected wallet
-      }
-    }
-
-    checkExistingAuth();
-
-    connector.on('wallet:signIn', (event: any) => {
-      if (event?.accounts?.[0]?.accountId) {
-        setAccountId(event.accounts[0].accountId);
-      }
-    });
-
-    connector.on('wallet:signOut', () => {
-      setAccountId(null);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [connector]);
-
+    let active = true;
+    void connector.getConnectedWallet().then(({ accounts }) => { if (active) setAccountId(accounts[0]?.accountId || null); }).catch(() => {});
+    const onSignIn = (event: any) => { if (active) setAccountId(event.accounts?.[0]?.accountId || null); };
+    const onSignOut = () => { if (active) setAccountId(null); };
+    connector.on('wallet:signIn', onSignIn); connector.on('wallet:signOut', onSignOut);
+    return () => { active = false; connector.off('wallet:signIn', onSignIn); connector.off('wallet:signOut', onSignOut); };
+  }, []);
   const connect = useCallback(async () => {
-    setIsConnecting(true);
-    try {
-      await connector.connect();
-      const wallet = await connector.wallet();
-      if (wallet) {
-        const accounts = await wallet.getAccounts();
-        if (accounts && accounts.length > 0) {
-          setAccountId(accounts[0].accountId);
-        }
-      }
-    } catch (err) {
-      console.error('Wallet connection failed:', err);
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [connector]);
-
+    setError(null); setConnecting(true);
+    try { const wallet = await connector.connect(); const accounts = await wallet.getAccounts(); setAccountId(accounts[0]?.accountId || null); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Wallet connection failed. Please try again.'); }
+    finally { setConnecting(false); }
+  }, []);
   const disconnect = useCallback(async () => {
-    try {
-      const wallet = await connector.wallet();
-      if (wallet && typeof wallet.signOut === 'function') {
-        await wallet.signOut();
-      }
-      setAccountId(null);
-    } catch (err) {
-      console.error('Sign out error:', err);
-    }
-  }, [connector]);
-
-  const executeTransaction = useCallback(
-    async (
-      receiverId: string,
-      methodName: string,
-      args: Record<string, any>,
-      depositYocto: string = '1',
-      gas: string = APP_CONFIG.gasUnits.standard
-    ) => {
-      const wallet = await connector.wallet();
-      if (!wallet) {
-        throw new Error('Please connect your NEAR wallet first.');
-      }
-
-      const action: ActionCall = {
-        type: 'FunctionCall',
-        params: {
-          methodName,
-          args,
-          gas,
-          deposit: depositYocto,
-        },
-      };
-
-      // Call signAndSendTransaction compatible with NEAR Connect
-      return await wallet.signAndSendTransaction({
-        receiverId,
-        actions: [action],
-      });
-    },
-    [connector]
-  );
-
-  return (
-    <WalletContext.Provider
-      value={{
-        accountId,
-        isConnected: !!accountId,
-        isConnecting,
-        connect,
-        disconnect,
-        executeTransaction,
-      }}
-    >
-      {children}
-    </WalletContext.Provider>
-  );
-};
-
-export const useWallet = () => {
-  const ctx = useContext(WalletContext);
-  if (!ctx) {
-    throw new Error('useWallet must be used within a WalletProvider');
-  }
-  return ctx;
-};
+    setError(null);
+    try { await connector.disconnect(); setAccountId(null); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Could not disconnect your wallet.'); }
+  }, []);
+  const executeTransaction = useCallback(async (receiverId: string, methodName: string, args: Record<string, any>, depositYocto = '1', gas = APP_CONFIG.gasUnits.standard) => {
+    const wallet = await connector.wallet();
+    if (!wallet) throw new Error('Please connect your NEAR wallet first.');
+    const result = await wallet.signAndSendTransaction({ receiverId, actions: [{ type: 'FunctionCall', params: { methodName, args, gas, deposit: depositYocto } }] });
+    assertTransactionSucceeded(result, methodName);
+    return result;
+  }, []);
+  return <WalletContext.Provider value={{ accountId, isConnected: !!accountId, isConnecting, error, connect, disconnect, executeTransaction }}>{children}</WalletContext.Provider>;
+}
+export function useWallet() { const context = useContext(WalletContext); if (!context) throw new Error('useWallet requires WalletProvider'); return context; }

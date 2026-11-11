@@ -1,459 +1,320 @@
-import React, { useState } from 'react';
-import { useWallet } from '../context/WalletContext';
+import { useState } from 'react';
+import { Droplets, Plus } from 'lucide-react';
+import {
+  ActionButton,
+  AmountField,
+  FormNotice,
+  SlippageControl,
+  SummaryRow,
+} from '../components/ProtocolUI';
 import { useMarket } from '../context/MarketContext';
-import { formatUnits, parseUnits } from '../lib/formatters';
+import { useWallet } from '../context/WalletContext';
+import { useProtocolAction } from '../hooks/useProtocolAction';
+import { formatUnits, safeAmount } from '../lib/formatters';
+import { estimateLp } from '../lib/liquidity';
 import { APP_CONFIG } from '../config';
 import type { TxStatus } from '../types';
-import { Coins, Droplets, PlusCircle, MinusCircle, Info, AlertCircle, Plus } from 'lucide-react';
 
-interface PoolTabProps {
+export function PoolTab({
+  onTxUpdate,
+}: {
   onTxUpdate: (tx: TxStatus) => void;
-}
-
-export const PoolTab: React.FC<PoolTabProps> = ({ onTxUpdate }) => {
+}) {
+  const {
+    selectedMarket,
+    marketData,
+    poolData,
+    userPosition,
+    lstBalance,
+    balancesReady,
+    refresh,
+  } = useMarket();
   const { isConnected, connect, executeTransaction } = useWallet();
-  const { selectedMarket, marketData, userPosition, lstBalance, refresh } = useMarket();
-
-  const [activeAction, setActiveAction] = useState<'add' | 'remove'>('add');
-  const [addSyInput, setAddSyInput] = useState<string>('50');
-  const [addPtInput, setAddPtInput] = useState<string>('50');
-  const [removeLpInput, setRemoveLpInput] = useState<string>('0');
-
-  const totalPtFormatted = formatUnits(marketData?.total_pt, 2);
-  const totalSyFormatted = formatUnits(marketData?.total_sy, 2);
-  const userLpFormatted = formatUnits(userPosition?.lp_balance, 4);
-  const userPtFormatted = formatUnits(userPosition?.pt_balance, 4);
-  const userLstFormatted = formatUnits(lstBalance, 4);
-
-  const totalPtBig = marketData?.total_pt ? BigInt(marketData.total_pt) : 0n;
-  const totalSyBig = marketData?.total_sy ? BigInt(marketData.total_sy) : 0n;
-  const totalLpBig = marketData?.total_lp ? BigInt(marketData.total_lp) : 0n;
-  const hasPoolReserves = totalPtBig > 0n && totalSyBig > 0n;
-
-  // Pool ratio: PT per 1 SY
-  const poolRatio = hasPoolReserves ? Number(totalPtBig) / Number(totalSyBig) : 1.0;
-
-  // Handle bi-directional input sync based on current pool ratio
-  const handleSyChange = (val: string) => {
-    setAddSyInput(val);
-    if (!val || isNaN(parseFloat(val))) {
-      setAddPtInput('');
-      return;
-    }
-    if (hasPoolReserves && poolRatio > 0) {
-      const calculatedPt = (parseFloat(val) * poolRatio).toFixed(4);
-      setAddPtInput(calculatedPt);
-    }
-  };
-
-  const handlePtChange = (val: string) => {
-    setAddPtInput(val);
-    if (!val || isNaN(parseFloat(val))) {
-      setAddSyInput('');
-      return;
-    }
-    if (hasPoolReserves && poolRatio > 0) {
-      const calculatedSy = (parseFloat(val) / poolRatio).toFixed(4);
-      setAddSyInput(calculatedSy);
-    }
-  };
-
-  const handleMaxSy = () => {
-    handleSyChange(userLstFormatted);
-  };
-
-  const handleMaxPt = () => {
-    handlePtChange(userPtFormatted);
-  };
-
-  // Expected LP tokens minted
-  const expectedLpMinted = (() => {
-    try {
-      const syYocto = BigInt(parseUnits(addSyInput));
-      const ptYocto = BigInt(parseUnits(addPtInput));
-      if (syYocto <= 0n || ptYocto <= 0n) return '0.0000';
-
-      if (!hasPoolReserves || totalLpBig <= 0n) {
-        // Initial deposit: sqrt(PT * SY)
-        const syNum = Number(syYocto) / 1e24;
-        const ptNum = Number(ptYocto) / 1e24;
-        return Math.sqrt(syNum * ptNum).toFixed(4);
-      }
-
-      // Proportional deposit: (sy_in * total_lp) / total_sy
-      const lpNum = (Number(syYocto) * Number(totalLpBig)) / Number(totalSyBig) / 1e24;
-      return lpNum.toFixed(4);
-    } catch {
-      return '0.0000';
-    }
-  })();
-
-  // User share percentage of pool
-  const userSharePercent = (() => {
-    try {
-      if (!userPosition?.lp_balance || !marketData?.total_lp || marketData.total_lp === '0') return '0.00%';
-      const user = Number(BigInt(userPosition.lp_balance)) / 1e24;
-      const total = Number(BigInt(marketData.total_lp)) / 1e24;
-      if (total <= 0) return '0.00%';
-      return `${((user / total) * 100).toFixed(2)}%`;
-    } catch {
-      return '0.00%';
-    }
-  })();
-
-  // Balance validations
-  const userLstYocto = BigInt(lstBalance || '0');
-  const userPtYocto = BigInt(userPosition?.pt_balance || '0');
-  const syInYocto = BigInt(parseUnits(addSyInput));
-  const ptInYocto = BigInt(parseUnits(addPtInput));
-
-  const hasInsufficientLst = isConnected && syInYocto > userLstYocto;
-  const hasInsufficientPt = isConnected && ptInYocto > userPtYocto;
-  const isAddInvalid =
-    parseFloat(addSyInput || '0') <= 0 ||
-    parseFloat(addPtInput || '0') <= 0 ||
-    hasInsufficientLst ||
-    hasInsufficientPt;
-
-  const handleAddLiquidity = async () => {
+  const { busy, run } = useProtocolAction(onTxUpdate);
+  const [mode, setMode] = useState<'add' | 'remove'>('add');
+  const [sy, setSy] = useState('');
+  const [pt, setPt] = useState('');
+  const [lp, setLp] = useState('');
+  const [slippage, setSlippage] = useState(50);
+  const totalSy = BigInt(poolData?.total_sy || '0'),
+    totalPt = BigInt(poolData?.total_pt || '0'),
+    totalLp = BigInt(poolData?.total_lp || '0');
+  const syIn = safeAmount(sy),
+    ptIn = safeAmount(pt),
+    lpIn = safeAmount(lp);
+  const estimate = estimateLp(syIn, ptIn, totalSy, totalPt, totalLp);
+  const ptOut = totalLp > 0n ? (lpIn * totalPt) / totalLp : 0n,
+    syOut = totalLp > 0n ? (lpIn * totalSy) / totalLp : 0n;
+  const hasReserves = totalSy > 0n && totalPt > 0n;
+  function changeSy(value: string) {
+    setSy(value);
+    if (hasReserves)
+      setPt(
+        formatUnits((safeAmount(value) * totalPt + totalSy - 1n) / totalSy, 24),
+      );
+  }
+  function changePt(value: string) {
+    setPt(value);
+    if (hasReserves)
+      setSy(
+        formatUnits((safeAmount(value) * totalSy + totalPt - 1n) / totalPt, 24),
+      );
+  }
+  const insufficient =
+    balancesReady &&
+    (mode === 'add'
+      ? syIn > BigInt(lstBalance) ||
+        ptIn > BigInt(userPosition?.pt_balance || '0')
+      : lpIn > BigInt(userPosition?.lp_balance || '0'));
+  const blocked =
+    mode === 'add' &&
+    (!marketData ||
+      marketData.paused ||
+      Date.now() >= marketData.expiry_ns / 1e6);
+  const invalid =
+    mode === 'add'
+      ? syIn <= 0n || ptIn <= 0n || estimate <= 0n || !poolData
+      : lpIn <= 0n;
+  const min = (amount: bigint) =>
+    ((amount * BigInt(10000 - slippage)) / 10000n).toString();
+  async function submit() {
     if (!isConnected) {
       await connect();
       return;
     }
-
-    try {
-      const syInYoctoStr = parseUnits(addSyInput);
-      const ptDesiredYoctoStr = parseUnits(addPtInput);
-
-      onTxUpdate({
-        status: 'pending',
-        title: 'Adding Liquidity',
-        message: `Depositing ${addSyInput} ${selectedMarket.symbol} + ${addPtInput} PT to mint LP shares...`,
-      });
-
-      const msg = JSON.stringify({
-        action: 'add_liquidity',
-        pt_desired: ptDesiredYoctoStr,
-        min_lp_out: '0',
-      });
-
-      const tx = await executeTransaction(
-        selectedMarket.lstContractId,
-        'ft_transfer_call',
-        {
-          receiver_id: selectedMarket.marketContractId,
-          amount: syInYoctoStr,
-          msg,
-        },
-        '1',
-        APP_CONFIG.gasUnits.swap
-      );
-
-      onTxUpdate({
-        status: 'success',
-        title: 'Liquidity Added',
-        message: `Successfully supplied ${addSyInput} ${selectedMarket.symbol} and ${addPtInput} PT to the pool.`,
-        txHash: tx?.transaction?.hash,
-      });
-
-      await refresh();
-    } catch (err: any) {
-      console.error('Add liquidity error:', err);
-      onTxUpdate({
-        status: 'error',
-        title: 'Add Liquidity Failed',
-        message: err?.message || 'Transaction failed.',
-      });
-    }
-  };
-
-  const handleRemoveLiquidity = async () => {
-    if (!isConnected) {
-      await connect();
-      return;
-    }
-
-    try {
-      const lpInYocto = parseUnits(removeLpInput);
-
-      onTxUpdate({
-        status: 'pending',
-        title: 'Removing Liquidity',
-        message: 'Burning LP tokens to redeem pro-rata PT and LST...',
-      });
-
-      const tx = await executeTransaction(
-        selectedMarket.marketContractId,
-        'remove_liquidity',
-        {
-          lp: lpInYocto,
-          min_pt_out: '0',
-          min_sy_out: '0',
-        },
-        '1',
-        APP_CONFIG.gasUnits.swap
-      );
-
-      onTxUpdate({
-        status: 'success',
-        title: 'Liquidity Removed',
-        message: `Successfully burned ${removeLpInput} LP tokens and reclaimed reserves.`,
-        txHash: tx?.transaction?.hash,
-      });
-
-      await refresh();
-    } catch (err: any) {
-      console.error('Remove liquidity error:', err);
-      onTxUpdate({
-        status: 'error',
-        title: 'Remove Liquidity Failed',
-        message: err?.message || 'Transaction failed.',
-      });
-    }
-  };
-
+    if (invalid || insufficient || blocked) return;
+    await run(
+      mode === 'add' ? 'Add liquidity' : 'Remove liquidity',
+      async () => {
+        const tx =
+          mode === 'add'
+            ? await executeTransaction(
+                selectedMarket.lstContractId,
+                'ft_transfer_call',
+                {
+                  receiver_id: selectedMarket.marketContractId,
+                  amount: syIn.toString(),
+                  msg: JSON.stringify({
+                    action: 'add_liquidity',
+                    pt_desired: ptIn.toString(),
+                    min_lp_out: min(estimate),
+                  }),
+                },
+                '1',
+                APP_CONFIG.gasUnits.swap,
+              )
+            : await executeTransaction(
+                selectedMarket.marketContractId,
+                'remove_liquidity',
+                {
+                  lp: lpIn.toString(),
+                  min_pt_out: min(ptOut),
+                  min_sy_out: min(syOut),
+                },
+                '1',
+                APP_CONFIG.gasUnits.swap,
+              );
+        await refresh();
+        return tx;
+      },
+    );
+  }
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Pool Header Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="glass-panel rounded-2xl p-5">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            <Coins className="w-4 h-4 text-cyan-400" />
-            <span>Pool PT Reserves</span>
-          </div>
-          <div className="text-2xl font-bold font-mono text-white">{totalPtFormatted} PT</div>
-          <p className="text-xs text-slate-400 mt-1">Principal token liquidity</p>
+    <div className="pool-layout">
+      <section className="pool-story">
+        <span className="eyebrow">A SHARE IN THE FLOW</span>
+        <h2>
+          Put liquidity
+          <br />
+          <span className="muted">to work.</span>
+        </h2>
+        <div className="pool-illustration" aria-hidden="true">
+          <span className="pool-orbit orbit-one" />
+          <span className="pool-orbit orbit-two" />
+          <span className="orbit-token orbit-pt">PT</span>
+          <span className="orbit-token orbit-lst">{selectedMarket.symbol}</span>
+          <Droplets size={32} strokeWidth={1} />
         </div>
-
-        <div className="glass-panel rounded-2xl p-5">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            <Droplets className="w-4 h-4 text-emerald-400" />
-            <span>Pool SY Reserves</span>
-          </div>
-          <div className="text-2xl font-bold font-mono text-white">
-            {totalSyFormatted} {selectedMarket.symbol}
-          </div>
-          <p className="text-xs text-slate-400 mt-1">Underlying staking asset</p>
+        <div className="trade-summary">
+          <SummaryRow label="Your LP position">
+            {balancesReady ? formatUnits(userPosition?.lp_balance, 6) : '—'} LP
+          </SummaryRow>
+          <SummaryRow label="Pool ownership">
+            {balancesReady && totalLp > 0n
+              ? `${(Number((BigInt(userPosition?.lp_balance || '0') * 10000n) / totalLp) / 100).toFixed(2)}%`
+              : '—'}
+          </SummaryRow>
+          <SummaryRow label="Total LP shares">
+            {poolData ? formatUnits(totalLp, 6) : '—'}
+          </SummaryRow>
         </div>
-
-        <div className="glass-panel rounded-2xl p-5">
-          <div className="flex items-center space-x-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-            <Info className="w-4 h-4 text-purple-400" />
-            <span>Your Pool Share</span>
+        <p>
+          Supply both PT and LST in the pool’s current ratio. Fees accrue to the
+          pool. Withdraw your proportional share of both assets at any time.
+        </p>
+        <a
+          className="text-link"
+          href={`#/app/mint-redeem?market=${selectedMarket.id}`}
+        >
+          Need PT? Split your LST first <Plus size={13} />
+        </a>
+        <FormNotice>
+          LP positions carry market, underlying asset, and smart contract risk.
+          Returns are not guaranteed.
+        </FormNotice>
+      </section>
+      <form
+        className="trade-panel"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <div className="panel-heading">
+          <span className="token-symbol pt-symbol">
+            <Droplets size={17} />
+          </span>
+          <div>
+            <h2>
+              {mode === 'add' ? 'Keep the market moving.' : 'Take your share.'}
+            </h2>
+            <p>PT / {selectedMarket.symbol} liquidity</p>
           </div>
-          <div className="text-2xl font-bold font-mono text-purple-400">{userSharePercent}</div>
-          <p className="text-xs text-slate-400 mt-1">Holding {userLpFormatted} LP</p>
         </div>
-      </div>
-
-      {/* Main Interaction Card */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
-        {/* Toggle Add / Remove Liquidity */}
-        <div className="flex p-1 bg-slate-900/90 rounded-2xl mb-6 border border-slate-800 max-w-md mx-auto">
-          <button
-            onClick={() => setActiveAction('add')}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-1.5 transition-all ${
-              activeAction === 'add'
-                ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Add Liquidity</span>
-          </button>
-          <button
-            onClick={() => setActiveAction('remove')}
-            className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-1.5 transition-all ${
-              activeAction === 'remove'
-                ? 'bg-slate-800 text-slate-100 shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <MinusCircle className="w-4 h-4" />
-            <span>Remove Liquidity</span>
-          </button>
-        </div>
-
-        {activeAction === 'add' ? (
-          <div className="max-w-lg mx-auto space-y-5">
-            {/* Input 1: Supply LST */}
-            <div className="bg-slate-900/70 rounded-2xl p-4 border border-slate-800">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-2">
-                <span>Supply LST (Underlying)</span>
-                <span className="flex items-center space-x-1">
-                  <span>Balance:</span>
-                  <span className="text-slate-200 font-mono">{userLstFormatted}</span>
-                  <button
-                    onClick={handleMaxSy}
-                    className="text-cyan-400 hover:text-cyan-300 ml-1 font-bold underline"
-                  >
-                    MAX
-                  </button>
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="0.0"
-                  value={addSyInput}
-                  onChange={(e) => handleSyChange(e.target.value)}
-                  className="bg-transparent text-2xl font-mono font-bold text-white focus:outline-none w-2/3"
-                />
-                <span className="font-bold text-sm bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-                  {selectedMarket.symbol}
-                </span>
-              </div>
-            </div>
-
-            {/* Plus Divider */}
-            <div className="flex items-center justify-center -my-2">
-              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shadow-lg">
-                <Plus className="w-4 h-4" />
-              </div>
-            </div>
-
-            {/* Input 2: Supply PT */}
-            <div className="bg-slate-900/70 rounded-2xl p-4 border border-slate-800">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-2">
-                <span>Supply PT (Principal Token)</span>
-                <span className="flex items-center space-x-1">
-                  <span>Balance:</span>
-                  <span className="text-slate-200 font-mono">{userPtFormatted}</span>
-                  <button
-                    onClick={handleMaxPt}
-                    className="text-cyan-400 hover:text-cyan-300 ml-1 font-bold underline"
-                  >
-                    MAX
-                  </button>
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="0.0"
-                  value={addPtInput}
-                  onChange={(e) => handlePtChange(e.target.value)}
-                  className="bg-transparent text-2xl font-mono font-bold text-white focus:outline-none w-2/3"
-                />
-                <span className="font-bold text-sm bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-cyan-400">
-                  PT
-                </span>
-              </div>
-            </div>
-
-            {/* Deposit Breakdown */}
-            <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 text-xs space-y-2">
-              <div className="flex justify-between text-slate-400">
-                <span>Pool Price Ratio:</span>
-                <span className="font-mono text-slate-200 font-semibold">
-                  1 {selectedMarket.symbol} = {poolRatio.toFixed(4)} PT
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Expected LP Received:</span>
-                <span className="font-mono text-emerald-400 font-bold">
-                  {expectedLpMinted} LP
-                </span>
-              </div>
-            </div>
-
-            {/* Warning if insufficient PT */}
-            {hasInsufficientPt && (
-              <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-600/40 text-xs text-amber-200 flex items-start space-x-2.5">
-                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold text-amber-300">Insufficient PT Balance</p>
-                  <p className="text-slate-400 leading-relaxed">
-                    You need <span className="text-amber-200 font-mono">{addPtInput} PT</span> to pair with your {selectedMarket.symbol}. You can mint PT+YT in the <span className="text-cyan-300 font-medium">Mint / Redeem</span> tab or purchase PT in the <span className="text-cyan-300 font-medium">Fix Yield</span> tab.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Warning if insufficient LST */}
-            {hasInsufficientLst && (
-              <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-600/40 text-xs text-amber-200 flex items-start space-x-2.5">
-                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold text-amber-300">Insufficient {selectedMarket.symbol} Balance</p>
-                  <p className="text-slate-400 leading-relaxed">
-                    You only have <span className="text-amber-200 font-mono">{userLstFormatted} {selectedMarket.symbol}</span>.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-800/30 text-xs text-cyan-200 space-y-1">
-              <p className="font-semibold text-cyan-300">Why provide dual-token liquidity on Exodus?</p>
-              <p className="text-slate-400 leading-relaxed">
-                Exodus AMM uses a zero-impermanent-loss converging logit curve. Supplying proportional PT + LST preserves pool price balance with zero price impact while earning continuous swap fees.
-              </p>
-            </div>
-
+        <div className="segmented">
+          {(['add', 'remove'] as const).map((value) => (
             <button
-              onClick={handleAddLiquidity}
-              disabled={isAddInvalid}
-              className="w-full py-4 rounded-2xl font-extrabold text-base bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-xl shadow-cyan-500/20 transition disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              type="button"
+              key={value}
+              className={mode === value ? 'selected' : ''}
+              aria-pressed={mode === value}
+              onClick={() => setMode(value)}
             >
-              {!isConnected
-                ? 'Connect Wallet'
-                : hasInsufficientPt
-                ? 'Insufficient PT Balance'
-                : hasInsufficientLst
-                ? `Insufficient ${selectedMarket.symbol} Balance`
-                : `Deposit Liquidity & Mint LP`}
+              {value === 'add' ? 'Add liquidity' : 'Remove liquidity'}
             </button>
-          </div>
+          ))}
+        </div>
+        {mode === 'add' ? (
+          <>
+            <AmountField
+              label="Deposit LST"
+              token={selectedMarket.symbol}
+              value={sy}
+              onChange={changeSy}
+              balance={
+                isConnected
+                  ? balancesReady
+                    ? formatUnits(lstBalance, 6)
+                    : '—'
+                  : undefined
+              }
+              onMax={
+                balancesReady
+                  ? () => changeSy(formatUnits(lstBalance, 24))
+                  : undefined
+              }
+            />
+            <div className="swap-divider">
+              <Plus size={14} />
+            </div>
+            <AmountField
+              label="Pair with principal"
+              token="PT"
+              value={pt}
+              onChange={changePt}
+              balance={
+                isConnected
+                  ? balancesReady
+                    ? formatUnits(userPosition?.pt_balance, 6)
+                    : '—'
+                  : undefined
+              }
+              onMax={
+                balancesReady
+                  ? () => changePt(formatUnits(userPosition?.pt_balance, 24))
+                  : undefined
+              }
+            />
+            <div className="trade-summary">
+              <SummaryRow label="Estimated LP shares">
+                {poolData ? formatUnits(estimate, 6) : '—'} LP
+              </SummaryRow>
+              <SummaryRow label="Minimum LP shares">
+                {poolData ? formatUnits(min(estimate), 6) : '—'} LP
+              </SummaryRow>
+              <SummaryRow label="Pool ratio">
+                {hasReserves
+                  ? `${formatUnits((totalPt * 10n ** 24n) / totalSy, 6)} PT / LST`
+                  : 'Initial liquidity'}
+              </SummaryRow>
+            </div>
+          </>
         ) : (
-          <div className="max-w-lg mx-auto space-y-5">
-            <div className="bg-slate-900/70 rounded-2xl p-4 border border-slate-800">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-2">
-                <span>Burn LP Tokens</span>
-                <span className="flex items-center space-x-1">
-                  <span>Balance:</span>
-                  <span className="text-slate-200 font-mono">{userLpFormatted} LP</span>
-                  <button
-                    onClick={() => setRemoveLpInput(formatUnits(userPosition?.lp_balance, 4))}
-                    className="text-cyan-400 hover:text-cyan-300 ml-1 font-bold underline"
-                  >
-                    MAX
-                  </button>
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="0.0"
-                  value={removeLpInput}
-                  onChange={(e) => setRemoveLpInput(e.target.value)}
-                  className="bg-transparent text-2xl font-mono font-bold text-white focus:outline-none w-2/3"
-                />
-                <span className="font-bold text-sm bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-                  LP Tokens
-                </span>
-              </div>
+          <>
+            <AmountField
+              label="LP shares to burn"
+              token="LP"
+              value={lp}
+              onChange={setLp}
+              balance={
+                isConnected
+                  ? balancesReady
+                    ? formatUnits(userPosition?.lp_balance, 6)
+                    : '—'
+                  : undefined
+              }
+              onMax={
+                balancesReady
+                  ? () => setLp(formatUnits(userPosition?.lp_balance, 24))
+                  : undefined
+              }
+            />
+            <div className="trade-summary">
+              <SummaryRow label="Estimated principal">
+                {poolData ? formatUnits(ptOut, 6) : '—'} PT
+              </SummaryRow>
+              <SummaryRow label="Estimated LST">
+                {poolData ? formatUnits(syOut, 6) : '—'} {selectedMarket.symbol}
+              </SummaryRow>
             </div>
-
-            <p className="text-xs text-slate-400 leading-relaxed text-center">
-              Burning LP tokens releases your proportional share of both pool PT and LST reserves back to your account.
-            </p>
-
-            <button
-              onClick={handleRemoveLiquidity}
-              disabled={parseFloat(removeLpInput) <= 0}
-              className="w-full py-4 rounded-2xl font-extrabold text-base bg-slate-800 hover:bg-slate-700 text-slate-100 transition disabled:opacity-40"
-            >
-              {!isConnected ? 'Connect Wallet' : 'Burn LP & Reclaim Assets'}
-            </button>
-          </div>
+            <FormNotice>
+              Withdrawals remain available when a market is paused or has
+              matured.
+            </FormNotice>
+          </>
         )}
-      </div>
+        <SlippageControl value={slippage} onChange={setSlippage} />
+        {insufficient && (
+          <FormNotice error>
+            Insufficient {mode === 'add' ? 'PT or LST' : 'LP'} balance.
+          </FormNotice>
+        )}
+        {blocked && (
+          <FormNotice>
+            New liquidity requires an active, unpaused market. You can still
+            remove liquidity.
+          </FormNotice>
+        )}
+        <ActionButton
+          busy={busy}
+          disabled={
+            isConnected &&
+            (invalid ||
+              insufficient ||
+              !!blocked ||
+              (mode === 'add' && !balancesReady))
+          }
+        >
+          {!isConnected
+            ? 'Connect wallet'
+            : mode === 'add'
+              ? 'Supply liquidity'
+              : 'Withdraw liquidity'}
+        </ActionButton>
+        <p className="panel-footnote">
+          Final amounts depend on the pool at execution.
+        </p>
+      </form>
     </div>
   );
-};
+}

@@ -15,13 +15,16 @@ export interface MarketConfig {
 export const APP_CONFIG = {
   networkId: 'testnet',
   rpcUrl: 'https://test.rpc.fastnear.com',
-  backendUrl: (import.meta.env.VITE_BACKEND_URL?.trim() || 'https://api-exodus-near.buoya.space').replace(/\/+$/, ''),
+  backendUrl: (
+    import.meta.env.VITE_BACKEND_URL?.trim() ||
+    'https://api-exodus-near.buoya.space'
+  ).replace(/\/+$/, ''),
   explorerUrl: 'https://testnet.nearblocks.io',
   defaultSlippageBps: 50, // 0.5%
   gasUnits: {
     standard: '50000000000000', // 50 TGas
-    swap: '100000000000000',     // 100 TGas
-    max: '300000000000000',      // 300 TGas
+    swap: '100000000000000', // 100 TGas
+    max: '300000000000000', // 300 TGas
   },
   markets: [
     {
@@ -35,7 +38,8 @@ export const APP_CONFIG = {
       expiryNs: 1806451200000000000, // 31 Mar 2027 00:00:00 UTC
       isDemo: true,
       decimals: 24,
-      description: 'Demo testnet market with admin-increasable rate for proving yield claims and maturity.',
+      description:
+        'Demo testnet market with admin-increasable rate for proving yield claims and maturity.',
     },
     {
       id: 'linear-31mar27',

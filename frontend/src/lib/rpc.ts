@@ -1,5 +1,12 @@
 import { APP_CONFIG } from '../config';
-import type { MarketHistoryPoint, MarketView, PoolView, SwapPreviewView, UserPositionView } from '../types';
+import { normalizeHistory } from './history';
+import type {
+  MarketHistoryPoint,
+  MarketView,
+  PoolView,
+  SwapPreviewView,
+  UserPositionView,
+} from '../types';
 
 /**
  * Standard NEAR JSON-RPC view call without heavy SDK dependencies.
@@ -7,11 +14,12 @@ import type { MarketHistoryPoint, MarketView, PoolView, SwapPreviewView, UserPos
 export async function queryViewMethod<T>(
   contractId: string,
   methodName: string,
-  args: Record<string, any> = {}
+  args: Record<string, any> = {},
 ): Promise<T> {
   const argsBase64 = btoa(JSON.stringify(args));
 
   const response = await fetch(APP_CONFIG.rpcUrl, {
+    signal: AbortSignal.timeout(12000),
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -50,71 +58,79 @@ export async function fetchPoolView(contractId: string): Promise<PoolView> {
   return queryViewMethod<PoolView>(contractId, 'get_pool', {});
 }
 
-export async function fetchUserPosition(contractId: string, accountId: string): Promise<UserPositionView> {
-  return queryViewMethod<UserPositionView>(contractId, 'get_user', { account_id: accountId });
+export async function fetchUserPosition(
+  contractId: string,
+  accountId: string,
+): Promise<UserPositionView> {
+  return queryViewMethod<UserPositionView>(contractId, 'get_user', {
+    account_id: accountId,
+  });
 }
 
-export async function fetchFtBalance(tokenContractId: string, accountId: string): Promise<string> {
-  try {
-    const res = await queryViewMethod<string>(tokenContractId, 'ft_balance_of', { account_id: accountId });
-    return res;
-  } catch {
-    return '0';
-  }
+export async function fetchFtBalance(
+  tokenContractId: string,
+  accountId: string,
+): Promise<string> {
+  return queryViewMethod<string>(tokenContractId, 'ft_balance_of', {
+    account_id: accountId,
+  });
 }
 
-export async function fetchPreviewSyForPt(contractId: string, syInYocto: string): Promise<SwapPreviewView> {
-  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_sy_for_pt', { sy_in: syInYocto });
+export async function fetchPreviewSyForPt(
+  contractId: string,
+  syInYocto: string,
+): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(
+    contractId,
+    'preview_swap_exact_sy_for_pt',
+    { sy_in: syInYocto },
+  );
 }
 
-export async function fetchPreviewPtForSy(contractId: string, ptInYocto: string): Promise<SwapPreviewView> {
-  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_pt_for_sy', { pt_in: ptInYocto });
+export async function fetchPreviewPtForSy(
+  contractId: string,
+  ptInYocto: string,
+): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(
+    contractId,
+    'preview_swap_exact_pt_for_sy',
+    { pt_in: ptInYocto },
+  );
 }
 
-export async function fetchPreviewSyForYt(contractId: string, syInYocto: string): Promise<SwapPreviewView> {
-  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_sy_for_yt', { sy_in: syInYocto });
+export async function fetchPreviewSyForYt(
+  contractId: string,
+  syInYocto: string,
+): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(
+    contractId,
+    'preview_swap_exact_sy_for_yt',
+    { sy_in: syInYocto },
+  );
 }
 
-export async function fetchPreviewYtForSy(contractId: string, ytInYocto: string): Promise<SwapPreviewView> {
-  return queryViewMethod<SwapPreviewView>(contractId, 'preview_swap_exact_yt_for_sy', { yt_in: ytInYocto });
+export async function fetchPreviewYtForSy(
+  contractId: string,
+  ytInYocto: string,
+): Promise<SwapPreviewView> {
+  return queryViewMethod<SwapPreviewView>(
+    contractId,
+    'preview_swap_exact_yt_for_sy',
+    { yt_in: ytInYocto },
+  );
 }
 
-/**
- * Fetches market history from Exodus backend, with fallback data if backend is offline.
- */
-export async function fetchMarketHistory(marketId: string): Promise<MarketHistoryPoint[]> {
-  try {
-    const res = await fetch(`${APP_CONFIG.backendUrl}/markets/${marketId}/history?limit=24`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        return data;
-      }
-    }
-  } catch {
-    // Backend offline or unreachable, generate realistic continuous curve points
-  }
-
-  // Graceful fallback for offline demo / judge mode
-  const points: MarketHistoryPoint[] = [];
-  const baseApy = 8.5;
-  const baseUnderlying = 7.1;
-  const now = Date.now();
-
-  for (let i = 24; i >= 0; i--) {
-    const time = new Date(now - i * 3600 * 1000).toISOString();
-    const noise = Math.sin(i / 3) * 0.4;
-    points.push({
-      recorded_at: time,
-      implied_apy: parseFloat((baseApy + noise).toFixed(2)),
-      underlying_apy: parseFloat((baseUnderlying + noise * 0.3).toFixed(2)),
-      py_index: '1301000000000000000',
-      total_pt: '50000000000000000000000000',
-      total_sy: '45000000000000000000000000',
-      tvl_near: 125000,
-    });
-  }
-  return points;
+/** Read indexed history without inventing market data on failure. */
+export async function fetchMarketHistory(
+  contractId: string,
+): Promise<MarketHistoryPoint[]> {
+  const res = await fetch(
+    `${APP_CONFIG.backendUrl}/markets/${encodeURIComponent(contractId)}/history?limit=1000`,
+    {
+      signal: AbortSignal.timeout(10000),
+    },
+  );
+  if (!res.ok)
+    throw new Error(`Market history is unavailable (HTTP ${res.status}).`);
+  return normalizeHistory(await res.json());
 }
