@@ -13,6 +13,7 @@ import { useProtocolAction } from '../hooks/useProtocolAction';
 import { formatUnits, shortenAddress } from '../lib/formatters';
 import { APP_CONFIG } from '../config';
 import type { ActiveTab, TxStatus } from '../types';
+import { TokenArtwork, tokenKind, TokenComposition } from '../components/TokenArtwork';
 
 export function PortfolioTab({
   onTxUpdate,
@@ -29,14 +30,7 @@ export function PortfolioTab({
   if (!isConnected)
     return (
       <section className="portfolio-empty">
-        <div className="portfolio-empty-art">
-          <img
-            src="/glass/hero-joined-sm.webp"
-            alt=""
-            width="768"
-            height="512"
-          />
-        </div>
+        <div className="portfolio-asset-art"><TokenComposition variant="split" compact /></div>
         <span className="eyebrow">YOUR OWN CORNER OF EXODUS</span>
         <h2>
           A clearer picture
@@ -149,7 +143,7 @@ export function PortfolioTab({
       </section>
       <div className="position-grid">
         {positions.map(
-          ({ label, unit, amount, icon: Icon, desc, tab, action }) => (
+          ({ label, unit, amount, desc, tab, action }) => (
             <section
               className={`position-card ${unit === 'YT' ? 'yield-position' : ''}`}
               key={label}
@@ -158,7 +152,7 @@ export function PortfolioTab({
                 <span
                   className={`token-symbol ${unit === 'YT' ? 'yt-symbol' : 'pt-symbol'}`}
                 >
-                  <Icon size={16} />
+                  <TokenArtwork kind={tokenKind(unit)} size={38} />
                 </span>
                 <span>{label}</span>
                 <span className="eyebrow">{unit}</span>

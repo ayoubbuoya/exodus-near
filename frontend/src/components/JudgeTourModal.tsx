@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, X } from 'lucide-react';
 import { Modal } from './Modal';
 import { Mark } from './Brand';
 import type { ActiveTab } from '../types';
+import { TokenComposition } from './TokenArtwork';
 
 const steps: {
   title: string;
@@ -97,12 +98,14 @@ export function JudgeTourModal({
             <X size={17} />
           </button>
         </div>
+        <div className="tour-story" tabIndex={0} role="region" aria-label="Tour explanation">
         <div className="tour-mark">
           <Mark />
           <span className="eyebrow">
             {step.label} · {index + 1} / {steps.length}
           </span>
         </div>
+        <TokenComposition key={index} variant={(['split', 'principal', 'yield', 'pool', 'intents'] as const)[index]} compact />
         <h2 id="tour-title">{step.title}</h2>
         <p>{step.description}</p>
         <ul className="tour-points">
@@ -113,6 +116,7 @@ export function JudgeTourModal({
             </li>
           ))}
         </ul>
+        </div>
         <nav className="tour-progress" aria-label="Tour steps">
           {steps.map((item, i) => (
             <button

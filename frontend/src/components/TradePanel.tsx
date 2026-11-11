@@ -24,6 +24,7 @@ import {
   fetchPreviewYtForSy,
 } from '../lib/rpc';
 import type { SwapPreviewView, TxStatus } from '../types';
+import { TokenArtwork } from './TokenArtwork';
 
 export function TradePanel({
   token,
@@ -174,7 +175,7 @@ export function TradePanel({
         <span
           className={`token-symbol ${token === 'PT' ? 'pt-symbol' : 'yt-symbol'}`}
         >
-          {token}
+          <TokenArtwork kind={token === 'PT' ? 'pt' : 'yt'} size={42} />
         </span>
         <div>
           <h2>{token === 'PT' ? 'Trade principal' : 'Trade yield'}</h2>

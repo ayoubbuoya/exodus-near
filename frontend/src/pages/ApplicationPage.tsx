@@ -19,7 +19,9 @@ import {
 import { WalletProvider, useWallet } from '../context/WalletContext';
 import { useProtocolAction } from '../hooks/useProtocolAction';
 import { MarketProvider, useMarket } from '../context/MarketContext';
-import { Brand, Mark } from '../components/Brand';
+import { Brand } from '../components/Brand';
+import { TokenArtwork } from '../components/TokenArtwork';
+import { WorkspaceIntro, DemoJourney } from '../components/WorkspaceIntro';
 import { Navbar } from '../components/Navbar';
 import { MarketStats } from '../components/MarketStats';
 import { MarketPosition } from '../components/MarketPosition';
@@ -223,10 +225,11 @@ function Workspace({
               <h1>{current.label}</h1>
               <p>{current.desc}</p>
             </div>
-            <button className="help-button" onClick={() => setTour(true)}>
-              <CircleHelp size={15} /> Quick tour
+            <button className="help-button" aria-label="Quick tour" onClick={() => setTour(true)}>
+              <CircleHelp size={15} /> <span>Quick tour</span>
             </button>
           </div>
+          <WorkspaceIntro tab={tab} onTour={() => setTour(true)} />
           {tab !== 'intents' && (
           <section className="market-overview" aria-label="Market overview">
           <div className="market-toolbar">
@@ -234,7 +237,7 @@ function Workspace({
               <span
                 className={`asset-avatar ${selectedMarket.isDemo ? 'mock-avatar' : 'linear-avatar'}`}
               >
-                {selectedMarket.isDemo ? <Mark /> : <Zap size={19} />}
+                <TokenArtwork kind="lst" size={38} />
               </span>
               <div>
                 <label htmlFor="market-select" className="eyebrow">
@@ -302,15 +305,10 @@ function Workspace({
               </button>
             </div>
           )}
-          {selectedMarket.isDemo && (
-            <div className="demo-notice">
-              <span className="demo-notice-label">DEMO</span>
-              <span>
-                Real testnet transactions. Simulated staking yield. Get started
-                with free MockLST in the panel below.
-              </span>
-            </div>
-          )}
+          {selectedMarket.isDemo && <>
+            <DemoJourney onTour={() => setTour(true)} />
+            <p className="demo-context"><span className="status-dot" /> Real testnet transactions · Simulated staking yield · No mainnet funds</p>
+          </>}
           {tab !== 'portfolio' && <MarketStats />}
           </section>
           )}
@@ -396,7 +394,7 @@ function Workspace({
 function MarketTools({ onTxUpdate }: { onTxUpdate: (tx: TxStatus) => void }) {
   const { selectedMarket, refresh } = useMarket();
   return (
-    <div className="market-tools">
+    <div className="market-tools" id="demo-tools" tabIndex={-1}>
       <div>
         <span className="eyebrow">A HELPING HAND</span>
         <p>

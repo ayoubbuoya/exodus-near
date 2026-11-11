@@ -3,18 +3,16 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
-  Check,
   ChevronDown,
-  Droplets,
   Menu,
   MoveUpRight,
   X,
-  Zap,
 } from 'lucide-react';
 import { Brand, Mark } from '../components/Brand';
 import { GlassInstrument } from '../components/GlassInstrument';
 import { APP_CONFIG } from '../config';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { TokenArtwork, TokenComposition, SplitShowcase } from '../components/TokenArtwork';
 
 const faqs = [
   [
@@ -41,7 +39,6 @@ const faqs = [
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [split, setSplit] = useState(1);
   const page = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -124,7 +121,7 @@ export default function LandingPage() {
         <section className="hero wrap" aria-labelledby="hero-title">
           <div className="hero-copy">
             <a className="network-label" href="#/app/fix">
-              <span className="status-dot" /> BUILT ON NEAR{' '}
+              <span  /> BUILT ON NEAR{' '}
               <span className="label-divider" /> TESTNET IS LIVE{' '}
               <ArrowUpRight size={12} />
             </a>
@@ -151,13 +148,13 @@ export default function LandingPage() {
             </div>
             <div className="hero-proof">
               <span>
-                <Check size={13} /> Permissionless
+                 Permissionless
               </span>
               <span>
-                <Check size={13} /> Non-custodial
+                 Non-custodial
               </span>
               <span>
-                <Check size={13} /> Open source
+                Open source
               </span>
             </div>
           </div>
@@ -185,7 +182,7 @@ export default function LandingPage() {
         >
           <div className="section-top" data-reveal>
             <span className="eyebrow">
-              <span className="section-number">01 /</span> THE SPLIT
+               THE SPLIT
             </span>
             <span className="section-aside mono">
               A LITTLE SEPARATION. A LOT MORE POSSIBILITY.
@@ -205,7 +202,7 @@ export default function LandingPage() {
               </p>
               <div className="split-legend">
                 <div>
-                  <span className="token-symbol pt-symbol">PT</span>
+                  <TokenArtwork kind="pt" size={46} />
                   <div>
                     <h3>Your principal, defined.</h3>
                     <p>
@@ -215,7 +212,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div>
-                  <span className="token-symbol yt-symbol">YT</span>
+                  <TokenArtwork kind="yt" size={46} />
                   <div>
                     <h3>Your yield, unlocked.</h3>
                     <p>
@@ -229,41 +226,7 @@ export default function LandingPage() {
                 Try the split <ArrowRight size={16} />
               </a>
             </div>
-            <div className="split-demo" data-reveal>
-              <GlassInstrument progress={split} />
-              <div className="split-demo-values">
-                <div>
-                  <span className="eyebrow">Principal</span>
-                  <strong>
-                    1,000 <small>PT</small>
-                  </strong>
-                </div>
-                <span className="muted">+</span>
-                <div>
-                  <span className="eyebrow yield-ink">Yield rights</span>
-                  <strong className="yield-ink">
-                    1,000 <small>YT</small>
-                  </strong>
-                </div>
-              </div>
-              <label className="split-control">
-                <span>Bring it together</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={split}
-                  onChange={(e) => setSplit(Number(e.target.value))}
-                  aria-label="Separate principal and yield"
-                />
-                <span>See the split</span>
-              </label>
-              <p className="demo-caption">
-                Illustration: 800 LST at an index of 1.25 NEAR. Not a live
-                quote.
-              </p>
-            </div>
+            <div className="split-art" data-reveal><SplitShowcase /></div>
           </div>
         </section>
         <section
@@ -274,7 +237,7 @@ export default function LandingPage() {
           <div className="wrap">
             <div className="section-top" data-reveal>
               <span className="eyebrow">
-                <span className="section-number">02 /</span> FIND YOUR ANGLE
+                FIND YOUR ANGLE
               </span>
               <span className="section-aside">
                 Same protocol. Different possibilities.
@@ -302,13 +265,7 @@ export default function LandingPage() {
                   <ArrowUpRight size={21} />
                 </div>
                 <div className="strategy-visual">
-                  <img
-                    src="/glass/shell-sm.webp"
-                    alt="Silver principal block"
-                    loading="lazy"
-                    width="768"
-                    height="512"
-                  />
+                  <TokenArtwork kind="pt" size={180} />
                 </div>
                 <div className="strategy-content">
                   <span className="strategy-tag">PRINCIPAL TOKEN</span>
@@ -332,13 +289,7 @@ export default function LandingPage() {
                   <ArrowUpRight size={21} />
                 </div>
                 <div className="strategy-visual">
-                  <img
-                    src="/glass/wedge-sm.webp"
-                    alt="Blue glass yield wedge"
-                    loading="lazy"
-                    width="768"
-                    height="512"
-                  />
+                  <TokenArtwork kind="yt" size={180} />
                 </div>
                 <div className="strategy-content">
                   <span className="strategy-tag yield-ink">YIELD TOKEN</span>
@@ -361,11 +312,7 @@ export default function LandingPage() {
                   <span className="eyebrow">THE MARKET MAKER</span>
                   <ArrowUpRight size={21} />
                 </div>
-                <div className="liquidity-visual" aria-hidden="true">
-                  <span className="pool-ring pool-ring-one" />
-                  <span className="pool-ring pool-ring-two" />
-                  <Droplets size={34} strokeWidth={1} />
-                </div>
+                <div className="strategy-visual market-maker-art"><TokenComposition variant="pool" /></div>
                 <div className="strategy-content">
                   <span className="strategy-tag">LIQUIDITY PROVIDER</span>
                   <h3>Keep it moving.</h3>
@@ -392,7 +339,7 @@ export default function LandingPage() {
         >
           <div className="section-top" data-reveal>
             <span className="eyebrow">
-              <span className="section-number">03 /</span> OPEN FOR EXPLORATION
+               OPEN FOR EXPLORATION
             </span>
             <span className="network-label">
               <span className="status-dot" /> NEAR TESTNET
@@ -426,7 +373,7 @@ export default function LandingPage() {
                   <span
                     className={`asset-avatar ${market.isDemo ? 'mock-avatar' : 'linear-avatar'}`}
                   >
-                    {market.isDemo ? <Mark /> : <Zap size={20} />}
+                    <TokenArtwork kind="lst" size={42} />
                   </span>
                   <div>
                     <strong>{market.asset}</strong>
@@ -451,8 +398,7 @@ export default function LandingPage() {
           </div>
           <div className="market-bottom">
             <span>
-              <span className="status-dot" /> On-chain markets. Wallet-signed
-              transactions.
+              <span  /> 
             </span>
             <a className="text-link" href="#/app/fix">
               Open the app <ArrowRight size={16} />
@@ -574,13 +520,6 @@ export default function LandingPage() {
             Experimental, unaudited software. Testnet only. Built for the NEAR
             Hackathon.
           </p>
-          <a
-            href="https://github.com/ayoubbuoya/exodus-near#1-hackathon-disclosures--prior-work-attribution"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Prior work: Exodus on Canton <ArrowUpRight size={11} />
-          </a>
         </div>
       </footer>
     </div>

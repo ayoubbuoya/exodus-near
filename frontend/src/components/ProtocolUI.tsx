@@ -1,6 +1,7 @@
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import { parseUnits } from '../lib/formatters';
+import { TokenArtwork, tokenKind } from './TokenArtwork';
 
 export function AmountField({
   label,
@@ -54,11 +55,7 @@ export function AmountField({
           onChange={(e) => onChange(e.target.value)}
         />
         <span className={`amount-token ${token === 'YT' ? 'yield-ink' : ''}`}>
-          <span
-            className={`mini-token ${token === 'YT' ? 'mini-token-yt' : ''}`}
-          >
-            {token === 'PT' || token === 'YT' ? token : 'N'}
-          </span>
+          <TokenArtwork kind={tokenKind(token)} size={28} />
           {token}
         </span>
       </div>

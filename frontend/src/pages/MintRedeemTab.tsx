@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, Split } from 'lucide-react';
-import { GlassInstrument } from '../components/GlassInstrument';
+import { TokenArtwork, TokenComposition } from '../components/TokenArtwork';
 import {
   ActionButton,
   AmountField,
@@ -112,7 +112,7 @@ export function MintRedeemTab({
             </>
           )}
         </h2>
-        <GlassInstrument progress={mode === 'mint' ? 1 : 0} />
+        <TokenComposition variant="split" compact />
         <div className="tokenize-explainer">
           <SummaryRow label="PT · Principal">
             1 NEAR of LST at maturity
@@ -200,10 +200,12 @@ export function MintRedeemTab({
           {mode === 'mint' ? (
             <div className="mint-split-values">
               <span>
+                <TokenArtwork kind="pt" size={32} />
                 <b>{expected === null ? '—' : formatUnits(expected, 6)}</b> PT
               </span>
               <span className="muted">+</span>
               <span className="yield-ink">
+                <TokenArtwork kind="yt" size={32} />
                 <b>{expected === null ? '—' : formatUnits(expected, 6)}</b> YT
               </span>
             </div>

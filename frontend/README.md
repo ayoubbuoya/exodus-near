@@ -136,6 +136,4 @@ selector. Signed on-chain execution still requires a wallet-driven testnet pass.
 | `src/lib/history.ts`, `formatters.ts`, `liquidity.ts`, `transactions.ts`           | API adaptation, precise amounts, LP estimates, confirmation validation |
 | `src/components/Modal.tsx`, `TxModal.tsx`, `JudgeTourModal.tsx`                    | Native accessible dialogs, transaction feedback and guided tour        |
 
-Experimental, unaudited, testnet software. The repository README retains the
-prior-work disclosure for Exodus on Canton; this app uses the rewritten NEAR
-contracts and does not import Canton's authentication or trading flows.
+Experimental, unaudited software running on NEAR testnet.

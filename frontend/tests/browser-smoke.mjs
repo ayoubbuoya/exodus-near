@@ -350,15 +350,13 @@ try {
     .getByRole('link', { name: 'How it works' })
     .click();
   assert.equal(await page.locator('#mobile-nav').count(), 0);
-  const slider = page.getByRole('slider');
-  await slider.fill('0');
-  assert.equal(
-    await page
-      .locator('.split-demo .instrument')
-      .evaluate((node) => node.style.getPropertyValue('--slide')),
-    '0',
-  );
-  await slider.fill('1');
+  const showcase = page.locator('.split-showcase');
+  await showcase.getByRole('button', { name: 'Bring them together' }).click();
+  assert.ok(await showcase.evaluate(node => node.classList.contains('is-joined')));
+  assert.equal(await showcase.locator('.instrument').evaluate(node => node.style.getPropertyValue('--slide')), '0');
+  await showcase.getByRole('button', { name: 'See the split' }).click();
+  assert.equal(await showcase.locator('.instrument').evaluate(node => node.style.getPropertyValue('--slide')), '1');
+  assert.equal(await page.getByRole('slider').count(), 0);
   await page.locator('#faq details').first().locator('summary').click();
   assert.equal(
     await page.locator('#faq details').first().getAttribute('open'),
