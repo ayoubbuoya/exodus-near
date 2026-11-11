@@ -15,7 +15,7 @@ export interface MarketConfig {
 export const APP_CONFIG = {
   networkId: 'testnet',
   rpcUrl: 'https://test.rpc.fastnear.com',
-  backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001',
+  backendUrl: (import.meta.env.VITE_BACKEND_URL?.trim() || 'https://api-exodus-near.buoya.space').replace(/\/+$/, ''),
   explorerUrl: 'https://testnet.nearblocks.io',
   defaultSlippageBps: 50, // 0.5%
   gasUnits: {
