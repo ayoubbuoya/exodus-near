@@ -5,17 +5,14 @@ Glacier design adapted from Farouk's Exodus reference project: silver principal,
 blue glass yield, layered Blender artwork, and the original split animation.
 The landing page uses self-hosted Public Sans. The app follows the reference's
 Inter typography, floating glass navigation, rounded market stat cards, and
-action panels beside position summaries. Both appearances use readable labels
+action panels beside position summaries. Both views use readable labels
 and tabular financial values; monospace is reserved for account identifiers.
 
 ## Appearance
 
-Use **Light mode / Dark mode** in the app header or desktop landing navigation.
-On a narrow landing page, the same control is inside the navigation menu.
-Frost light mode applies to the entire site, charts, inputs, and dialogs.
-Glacier dark mode remains the default. The choice is stored as
-`exodus-near-theme`, restored before first paint, and synchronized between tabs.
-The switch still works for the current visit if browser storage is unavailable.
+The site uses the Glacier dark palette throughout the landing page, trading
+workspace, charts, inputs, and dialogs. Browser color preferences and previously
+saved theme choices do not change its appearance.
 
 ## Run
 
@@ -107,14 +104,14 @@ the local Vite URL. No extra dependency is added to the application.
 
 The browser suite uses explicit wallet, API, and RPC fixtures. It checks request
 payloads and slippage, delayed quote races, market switching, rejection feedback,
-all six screens in both themes at 1440/768/390/320 px, mobile navigation, FAQ and split controls,
+all six screens in dark mode at eight viewport sizes, mobile navigation, FAQ and split controls,
 dialog focus/keyboard behavior, history failure/recovery, and paused/matured
 exits. It never signs or sends a real transaction. Screenshots and failure
 diagnostics go into the ignored `node_modules/.cache/exodus-qa/` directory.
 Appearance checks verify that Public Sans loads, body copy stays at least 16px,
 visible UI text stays at least 12px, primary text tokens maintain 4.5:1 contrast,
-light dialogs use the light palette, and the theme persists across reloads and
-synchronizes between tabs.
+dialogs use the dark palette, and dark mode stays active across reloads even with
+a previously saved light preference or a light browser color scheme.
 
 Live verification also checked the hosted health/history endpoints, a successful
 dry-run 1Click quote, real indexed history in the browser, and the actual wallet

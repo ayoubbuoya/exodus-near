@@ -289,28 +289,6 @@
 .app-topbar .badge {
   font-size: 12px;
 }
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 8px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 24px;
-  background: var(--control);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.theme-toggle:hover {
-  background: var(--hover);
-}
-.mobile-theme-row {
-  padding-block: 12px;
-  border-top: 1px solid var(--line);
-}
 @media (max-width: 1200px) {
   .trade-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -382,11 +360,6 @@
     max-width: 440px;
   }
 }
-@media (min-width: 761px) {
-  .mobile-theme-row {
-    display: none;
-  }
-}
 @media (max-width: 760px) {
   .app-workspace {
     margin-left: 0;
@@ -403,9 +376,6 @@
   }
   .sidebar-link {
     padding: 14px;
-  }
-  .landing-nav .theme-toggle {
-    display: none;
   }
   .landing-nav .brand > span {
     font-size: 22px;

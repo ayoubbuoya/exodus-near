@@ -4,11 +4,6 @@
   --reward: #99baff;
   --asset-blue: #99baff;
 }
-[data-theme='light'], [data-theme='light'] .application {
-  --principal: #246c59;
-  --reward: #315cb7;
-  --asset-blue: #315cb7;
-}
 .token-art {
   display: inline-block;
   width: var(--token-size);

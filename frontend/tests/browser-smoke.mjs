@@ -232,21 +232,6 @@ function contrast(first, second) {
     b = luminance(second);
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
-async function chooseTheme(theme) {
-  await resize({ width: 1440, height: 1000 });
-  if ((await page.locator('html').getAttribute('data-theme')) !== theme)
-    await page
-      .getByRole('button', { name: `Switch to ${theme} mode`, exact: true })
-      .click();
-  await waitFor(
-    () =>
-      page
-        .locator('html')
-        .getAttribute('data-theme')
-        .then((value) => value === theme),
-    `${theme} theme did not apply`,
-  );
-}
 async function checkAppearance(theme) {
   await page.evaluate(() => document.fonts.ready);
   const colors = await page.evaluate(() => {
@@ -310,15 +295,20 @@ async function confirmAction(button) {
   return call;
 }
 
+// A saved preference from the removed theme feature must not change the palette.
+await context.addInitScript(() => localStorage.setItem('exodus-near-theme', 'light'));
+await page.emulateMedia({ colorScheme: 'light' });
+
 try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { level: 1 }).waitFor();
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await chooseTheme('light');
-  await checkAppearance('light');
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' });
+  await checkAppearance('dark');
+  assert.equal(await page.getByRole('button', { name: /Switch to (light|dark) mode/ }).count(), 0);
+  assert.equal(await page.locator('html').evaluate(node => getComputedStyle(node).colorScheme), 'dark');
   for (const width of [1440, 768, 390, 320]) {
     await resize({ width, height: 1000 });
-    await noOverflow(`Light landing ${width}`);
+    await noOverflow(`Landing ${width}`);
     const clippedControls = await page.locator('.landing-nav').evaluate((nav) =>
       [...nav.querySelectorAll('a,button')]
         .filter((node) => {
@@ -327,19 +317,7 @@ try {
         })
         .map((node) => node.textContent),
     );
-    assert.deepEqual(
-      clippedControls,
-      [],
-      `Landing navigation clips at ${width}px`,
-    );
-  }
-  await page.reload({ waitUntil: 'networkidle' });
-  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
-  await chooseTheme('dark');
-  await checkAppearance('dark');
-  for (const width of [1440, 768, 390, 320]) {
-    await resize({ width, height: 1000 });
-    await noOverflow(`Landing ${width}`);
+    assert.deepEqual(clippedControls, [], `Landing navigation clips at ${width}px`);
   }
   await resize({ width: 390, height: 844 });
   await page
@@ -639,60 +617,58 @@ try {
   );
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('dialog[open]').count(), 0);
-  for (const theme of ['dark', 'light']) {
-    await chooseTheme(theme);
-    for (const [width, height] of [[1440, 900], [1280, 650], [1120, 620], [1024, 600], [931, 700], [768, 900], [390, 844], [320, 700]]) {
-      await resize({ width, height });
-      for (const [tab, label] of [
-        ['fix', 'Fixed yield'],
-        ['long', 'Long yield'],
-        ['pool', 'Liquidity'],
-        ['mint-redeem', 'Mint & redeem'],
-        ['portfolio', 'Portfolio'],
-        ['intents', 'Cross-chain'],
-      ]) {
-        await navigate(tab, label);
-        await noOverflow(`${theme} ${tab} ${width}`);
-        await checkAppearance(theme);
-        if (width <= 480) {
-          const centers = await page.locator('.app-topbar-actions').evaluate((node) => [...node.children].map((child) => {
-            const bounds = child.getBoundingClientRect();
-            return bounds.top + bounds.height / 2;
-          }));
-          assert.ok(Math.max(...centers) - Math.min(...centers) < 2, 'Mobile wallet controls should fit on one row');
-        }
-        if (width >= 1024) {
-          const sidebar = await page.locator('.app-sidebar').evaluate((node) => {
-            const bounds = node.getBoundingClientRect();
-            const nav = node.querySelector('nav');
-            const bottom = node.querySelector('.sidebar-bottom');
-            return {
-              wholeFits: node.scrollHeight <= node.clientHeight + 1,
-              linksFit: nav.scrollHeight <= nav.clientHeight + 1,
-              footerFits: bottom.getBoundingClientRect().bottom <= bounds.bottom - 8,
-              noOverlap: nav.getBoundingClientRect().bottom <= bottom.getBoundingClientRect().top + 1,
-            };
-          });
-          assert.deepEqual(sidebar, { wholeFits: true, linksFit: true, footerFits: true, noOverlap: true }, `Sidebar clips at ${width}x${height}`);
-        }
-        if (tab === 'intents') {
-          const spacing = await page.evaluate(() => ({
-            titleBottom: document.querySelector('.workspace-title').getBoundingClientRect().bottom,
-            formTop: document.querySelector('.intents-layout .trade-panel').getBoundingClientRect().top,
-          }));
-          assert.ok(spacing.formTop - spacing.titleBottom >= 20, 'Cross-chain form needs separation from the page heading');
-        }
-        const clippedMarketLinks = await page.locator('.market-action-nav').evaluateAll((nodes) => nodes.flatMap((nav) => {
-          const bounds = nav.getBoundingClientRect();
-          return [...nav.querySelectorAll('a')].filter((link) => {
-            const rect = link.getBoundingClientRect();
-            return rect.left < bounds.left || rect.right > bounds.right + 1;
-          }).map((link) => link.textContent);
+  for (const [width, height] of [[1440, 900], [1280, 650], [1120, 620], [1024, 600], [931, 700], [768, 900], [390, 844], [320, 700]]) {
+    await resize({ width, height });
+    for (const [tab, label] of [
+      ['fix', 'Fixed yield'],
+      ['long', 'Long yield'],
+      ['pool', 'Liquidity'],
+      ['mint-redeem', 'Mint & redeem'],
+      ['portfolio', 'Portfolio'],
+      ['intents', 'Cross-chain'],
+    ]) {
+      await navigate(tab, label);
+      assert.equal(await page.getByRole('button', { name: /Switch to (light|dark) mode/ }).count(), 0);
+      await noOverflow(`dark ${tab} ${width}`);
+      await checkAppearance('dark');
+      if (width <= 480) {
+        const centers = await page.locator('.app-topbar-actions').evaluate((node) => [...node.children].map((child) => {
+          const bounds = child.getBoundingClientRect();
+          return bounds.top + bounds.height / 2;
         }));
-        assert.deepEqual(clippedMarketLinks, [], 'Market action links should stay fully visible');
-        if (width === 1440 || width === 1280 || width === 390) {
-          await page.screenshot({ path: `${output}/app-${tab}-${theme}-${width}.png`, fullPage: true });
-        }
+        assert.ok(Math.max(...centers) - Math.min(...centers) < 2, 'Mobile wallet controls should fit on one row');
+      }
+      if (width >= 1024) {
+        const sidebar = await page.locator('.app-sidebar').evaluate((node) => {
+          const bounds = node.getBoundingClientRect();
+          const nav = node.querySelector('nav');
+          const bottom = node.querySelector('.sidebar-bottom');
+          return {
+            wholeFits: node.scrollHeight <= node.clientHeight + 1,
+            linksFit: nav.scrollHeight <= nav.clientHeight + 1,
+            footerFits: bottom.getBoundingClientRect().bottom <= bounds.bottom - 8,
+            noOverlap: nav.getBoundingClientRect().bottom <= bottom.getBoundingClientRect().top + 1,
+          };
+        });
+        assert.deepEqual(sidebar, { wholeFits: true, linksFit: true, footerFits: true, noOverlap: true }, `Sidebar clips at ${width}x${height}`);
+      }
+      if (tab === 'intents') {
+        const spacing = await page.evaluate(() => ({
+          titleBottom: document.querySelector('.workspace-title').getBoundingClientRect().bottom,
+          formTop: document.querySelector('.intents-layout .trade-panel').getBoundingClientRect().top,
+        }));
+        assert.ok(spacing.formTop - spacing.titleBottom >= 20, 'Cross-chain form needs separation from the page heading');
+      }
+      const clippedMarketLinks = await page.locator('.market-action-nav').evaluateAll((nodes) => nodes.flatMap((nav) => {
+        const bounds = nav.getBoundingClientRect();
+        return [...nav.querySelectorAll('a')].filter((link) => {
+          const rect = link.getBoundingClientRect();
+          return rect.left < bounds.left || rect.right > bounds.right + 1;
+        }).map((link) => link.textContent);
+      }));
+      assert.deepEqual(clippedMarketLinks, [], 'Market action links should stay fully visible');
+      if (width === 1440 || width === 1280 || width === 390) {
+        await page.screenshot({ path: `${output}/app-${tab}-dark-${width}.png`, fullPage: true });
       }
     }
   }
@@ -746,10 +722,10 @@ try {
     fullPage: true,
   });
   await page.reload({ waitUntil: 'networkidle' });
-  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  assert.equal(await page.locator('html').evaluate(node => getComputedStyle(node).colorScheme), 'dark');
   assert.equal(
     await page.locator('meta[name="theme-color"]').getAttribute('content'),
-    '#eef2f8',
+    '#080c14',
   );
   await resize({ width: 1440, height: 1000 });
   await navigate('fix', 'Fixed yield');
@@ -771,30 +747,15 @@ try {
     await page
       .locator('dialog[open]')
       .evaluate((node) => getComputedStyle(node).backgroundColor),
-    'rgb(255, 255, 255)',
+    'rgb(11, 18, 32)',
   );
   await page.keyboard.press('Escape');
-  const otherTab = await page.context().newPage();
-  await otherTab.goto(base, { waitUntil: 'networkidle' });
-  await otherTab.evaluate(() =>
-    localStorage.setItem('exodus-near-theme', 'dark'),
-  );
-  await waitFor(
-    () =>
-      page
-        .locator('html')
-        .getAttribute('data-theme')
-        .then((value) => value === 'dark'),
-    'Theme did not synchronize from another tab',
-  );
-  await otherTab.close();
-  await chooseTheme('light');
   await page.screenshot({
-    path: `${output}/type-app-light.png`,
+    path: `${output}/type-app-dark.png`,
     fullPage: true,
   });
   console.log(
-    'PASS landing Public Sans, app Inter, readable type sizes, light/dark contrast, theme persistence, cross-tab synchronization, and light dialogs',
+    'PASS landing Public Sans, app Inter, readable type sizes, dark contrast and dialogs, and dark mode with a saved light preference',
   );
   assert.deepEqual(errors, []);
 } catch (error) {

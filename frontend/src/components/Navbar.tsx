@@ -2,7 +2,6 @@ import { LogOut, ExternalLink, Wallet } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { shortenAddress } from '../lib/formatters';
 import { APP_CONFIG } from '../config';
-import { ThemeToggle } from './ThemeToggle';
 
 export function Navbar({ title }: { title: string }) {
   const { accountId, isConnecting, connect, disconnect, error } = useWallet();
@@ -14,7 +13,6 @@ export function Navbar({ title }: { title: string }) {
         <strong>{title}</strong>
       </div>
       <div className="app-topbar-actions">
-        <ThemeToggle />
         <span className="badge">
           <span className="status-dot" />
           <span className="network-label">NEAR Testnet</span>

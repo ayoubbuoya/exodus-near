@@ -1,4 +1,4 @@
-/* The app follows the original Exodus Glacier/Frost design system.
+/* The app follows the original Exodus Glacier design system.
    Scoped here so the landing page keeps its own presentation styles. */
 .application {
   --app-sidebar-width: 232px;
@@ -34,31 +34,6 @@
   font-family: var(--font-sans);
   font-weight: 400;
   min-height: 100svh;
-}
-[data-theme='light'] .application {
-  --bg: #eef2f8;
-  --panel: #ffffff;
-  --text: #0b1220;
-  --silver: #0b1220;
-  --muted: #46526a;
-  --faint: #5d6880;
-  --yield: #1d5bd8;
-  --line: #0b122014;
-  --line-strong: #0b122026;
-  --field: #ffffff52;
-  --control: #0b122006;
-  --hover: #0b12200a;
-  --primary-text: #eef2f8;
-  --glass-fill: rgb(255 255 255 / 0.52);
-  --glass-rim: linear-gradient(145deg, #fff, #ffffff8c 30%, #28468c1a 62%, #28468c33);
-  --glass-shadow: inset 0 1px 0 #ffffffcc, 0 18px 44px -22px #1e3c8c35;
-  --glass-sheen: #ffffff60;
-  --ambient-a: rgb(96 140 255 / 0.3);
-  --ambient-b: rgb(130 190 255 / 0.26);
-  --ambient-c: rgb(150 175 255 / 0.2);
-  --chart-fixed: #0b1220;
-  --chart-axis: #5d6880;
-  --chart-grid: #0b122010;
 }
 .app-backdrop {
   position: fixed;
@@ -145,7 +120,6 @@
   white-space: nowrap;
 }
 .application .sidebar-link.active { background: #ffffff0d; color: var(--text); box-shadow: inset 0 1px 0 #ffffff0a; }
-[data-theme='light'] .application .sidebar-link.active { background: #0b12200a; }
 .application .sidebar-link.active::after { display: none; }
 .application .sidebar-link.active svg { stroke-width: 2; }
 .application .sidebar-new { display: block; font-size: 12px; border: 0; color: var(--faint); padding: 0; }
@@ -176,7 +150,6 @@
 .application .app-breadcrumb strong { font-weight: 400; }
 .application .app-topbar-actions { gap: 8px; }
 .network-label-short { display: none; }
-.application .theme-toggle { border: 0; background: transparent; font-size: 13px; font-weight: 400; min-height: 40px; padding-inline: 8px; }
 .application .wallet-account { font-size: 12px; }
 .application .app-main {
   display: grid;
@@ -433,8 +406,6 @@
   .application .app-topbar-actions { flex-wrap: wrap; gap: 5px; }
   .application .app-topbar .badge { font-size: 12px; padding-inline: 6px; }
   .application .app-topbar .button-small { padding-inline: 12px; font-size: 13px; }
-  .application .theme-toggle { font-size: 12px; gap: 5px; padding-inline: 6px; }
-  .application .theme-toggle > span { display: none; }
   .application .workspace-title { gap: 12px; align-items: flex-start; margin-bottom: 0; }
   .application .workspace-title h1 { font-size: 28px; }
   .application .workspace-title p { font-size: 14px; }
@@ -482,7 +453,6 @@
   .application .app-topbar .network-label { display: none; }
   .application .app-topbar .network-label-short { display: inline; }
   .application .app-topbar .badge { gap: 5px; padding: 5px 6px; white-space: nowrap; }
-  .application .app-topbar .theme-toggle { width: 34px; min-height: 36px; padding: 0; flex-shrink: 0; }
   .application .wallet-connected { gap: 4px; }
   .application .wallet-account { gap: 6px; padding: 9px 8px; white-space: nowrap; font-size: 12px; }
   .application .wallet-account .account-dot { display: none; }

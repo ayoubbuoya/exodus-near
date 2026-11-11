@@ -5,18 +5,6 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080c14" />
-    <script>
-      try {
-        const theme =
-          localStorage.getItem('exodus-near-theme') === 'light'
-            ? 'light'
-            : 'dark';
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-        document.querySelector('meta[name="theme-color"]').content =
-          theme === 'light' ? '#eef2f8' : '#080c14';
-      } catch {}
-    </script>
     <title>Exodus — Your yield. Your terms.</title>
     <meta
       name="description"
