@@ -75,8 +75,16 @@ export default function LandingPage() {
           </div>
           <div className="nav-actions">
             <ThemeToggle />
-            <a className="button button-bright button-small" href="#/app/fix">
-              Launch app <ArrowUpRight size={15} />
+            <a
+              className="button button-bright button-small"
+              href="#/app/fix"
+              aria-label="Launch app"
+            >
+              <span className="launch-label">Launch app</span>
+              <span className="launch-label-short" aria-hidden="true">
+                App
+              </span>{' '}
+              <ArrowUpRight size={15} />
             </a>
             <button
               className="icon-button mobile-menu-toggle"

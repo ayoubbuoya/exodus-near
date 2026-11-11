@@ -14,7 +14,10 @@ const browser = await chromium.launch({
     ? { executablePath: process.env.EXODUS_CHROMIUM_PATH }
     : {}),
 });
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 1000 },
+});
+const page = await context.newPage();
 page.setDefaultTimeout(12000);
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
@@ -203,6 +206,89 @@ async function noOverflow(label) {
     `${label}: horizontal overflow ${JSON.stringify(sizes)}`,
   );
 }
+async function resize(viewport) {
+  await page.setViewportSize(viewport);
+  // Chromium delivers media-query changes on the next rendering frame.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+}
+
+function contrast(first, second) {
+  const luminance = (hex) => {
+    const channels = hex
+      .trim()
+      .replace('#', '')
+      .match(/../g)
+      .slice(0, 3)
+      .map((c) => parseInt(c, 16) / 255)
+      .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  };
+  const a = luminance(first),
+    b = luminance(second);
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+async function chooseTheme(theme) {
+  await resize({ width: 1440, height: 1000 });
+  if ((await page.locator('html').getAttribute('data-theme')) !== theme)
+    await page
+      .getByRole('button', { name: `Switch to ${theme} mode`, exact: true })
+      .click();
+  await waitFor(
+    () =>
+      page
+        .locator('html')
+        .getAttribute('data-theme')
+        .then((value) => value === theme),
+    `${theme} theme did not apply`,
+  );
+}
+async function checkAppearance(theme) {
+  await page.evaluate(() => document.fonts.ready);
+  const colors = await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return Object.fromEntries(
+      ['bg', 'text', 'muted', 'faint', 'yield'].map((name) => [
+        name,
+        style.getPropertyValue(`--${name}`).trim(),
+      ]),
+    );
+  });
+  for (const ink of ['text', 'muted', 'faint', 'yield'])
+    assert.ok(
+      contrast(colors[ink], colors.bg) >= 4.5,
+      `${theme} ${ink} text lacks contrast`,
+    );
+  assert.ok(
+    await page.evaluate(() => document.fonts.check('500 16px "Public Sans"')),
+    'Public Sans did not load',
+  );
+  const unreadable = await page.evaluate(() =>
+    [...document.querySelectorAll('p, label, button, select, input, span')]
+      .filter((node) => {
+        const rect = node.getBoundingClientRect();
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          getComputedStyle(node).visibility !== 'hidden' &&
+          [...node.childNodes].some(
+            (child) =>
+              child.nodeType === Node.TEXT_NODE && child.textContent.trim(),
+          ) &&
+          parseFloat(getComputedStyle(node).fontSize) < 12
+        );
+      })
+      .map((node) => ({
+        text: node.textContent.trim().slice(0, 40),
+        size: getComputedStyle(node).fontSize,
+      })),
+  );
+  assert.deepEqual(unreadable, [], `${theme} has unreadably small text`);
+}
 async function confirmAction(button) {
   const count = await page.evaluate(() => window.__walletCalls?.length || 0);
   await button.click();
@@ -224,11 +310,34 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.getByRole('heading', { level: 1 }).waitFor();
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  await chooseTheme('light');
+  await checkAppearance('light');
   for (const width of [1440, 768, 390, 320]) {
-    await page.setViewportSize({ width, height: 1000 });
+    await resize({ width, height: 1000 });
+    await noOverflow(`Light landing ${width}`);
+    const clippedControls = await page.locator('.landing-nav').evaluate((nav) =>
+      [...nav.querySelectorAll('a,button')]
+        .filter((node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && (rect.right > innerWidth || rect.left < 0);
+        })
+        .map((node) => node.textContent),
+    );
+    assert.deepEqual(
+      clippedControls,
+      [],
+      `Landing navigation clips at ${width}px`,
+    );
+  }
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  await chooseTheme('dark');
+  await checkAppearance('dark');
+  for (const width of [1440, 768, 390, 320]) {
+    await resize({ width, height: 1000 });
     await noOverflow(`Landing ${width}`);
   }
-  await page.setViewportSize({ width: 390, height: 844 });
+  await resize({ width: 390, height: 844 });
   await page
     .getByRole('button', { name: 'Open navigation', exact: true })
     .click();
@@ -255,7 +364,7 @@ try {
     'PASS landing navigation, FAQ, split interaction, reduced motion, and four responsive widths',
   );
 
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  await resize({ width: 1440, height: 1000 });
   await navigate('fix', 'Fixed yield.');
   await page.getByText('3 indexed snapshots', { exact: true }).waitFor();
   await page
@@ -508,21 +617,25 @@ try {
   );
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('dialog[open]').count(), 0);
-  for (const width of [1440, 768, 390, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const [tab, label] of [
-      ['fix', 'Fixed yield.'],
-      ['long', 'Long yield.'],
-      ['pool', 'Liquidity.'],
-      ['mint-redeem', 'Mint & redeem.'],
-      ['portfolio', 'Portfolio.'],
-      ['intents', 'Cross-chain.'],
-    ]) {
-      await navigate(tab, label);
-      await noOverflow(`${tab} ${width}`);
+  for (const theme of ['dark', 'light']) {
+    await chooseTheme(theme);
+    for (const width of [1440, 768, 390, 320]) {
+      await resize({ width, height: 900 });
+      for (const [tab, label] of [
+        ['fix', 'Fixed yield.'],
+        ['long', 'Long yield.'],
+        ['pool', 'Liquidity.'],
+        ['mint-redeem', 'Mint & redeem.'],
+        ['portfolio', 'Portfolio.'],
+        ['intents', 'Cross-chain.'],
+      ]) {
+        await navigate(tab, label);
+        await noOverflow(`${theme} ${tab} ${width}`);
+        await checkAppearance(theme);
+      }
     }
   }
-  await page.setViewportSize({ width: 390, height: 844 });
+  await resize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Open workspace navigation' }).click();
   await page
     .locator('#workspace-sidebar')
@@ -571,6 +684,58 @@ try {
     path: `${output}/portfolio-mobile.png`,
     fullPage: true,
   });
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
+  assert.equal(
+    await page.locator('meta[name="theme-color"]').getAttribute('content'),
+    '#eef2f8',
+  );
+  await resize({ width: 1440, height: 1000 });
+  await navigate('fix', 'Fixed yield.');
+  const type = await page.locator('.workspace-title p').evaluate((node) => {
+    const css = getComputedStyle(node);
+    return {
+      size: parseFloat(css.fontSize),
+      weight: Number(css.fontWeight),
+      family: css.fontFamily,
+    };
+  });
+  assert.ok(
+    type.size >= 16 &&
+      type.weight >= 500 &&
+      type.family.includes('Public Sans'),
+  );
+  await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
+  assert.equal(
+    await page
+      .locator('dialog[open]')
+      .evaluate((node) => getComputedStyle(node).backgroundColor),
+    'rgb(255, 255, 255)',
+  );
+  await page.keyboard.press('Escape');
+  const otherTab = await page.context().newPage();
+  await otherTab.goto(base, { waitUntil: 'networkidle' });
+  await otherTab.evaluate(() =>
+    localStorage.setItem('exodus-near-theme', 'dark'),
+  );
+  await waitFor(
+    () =>
+      page
+        .locator('html')
+        .getAttribute('data-theme')
+        .then((value) => value === 'dark'),
+    'Theme did not synchronize from another tab',
+  );
+  await otherTab.close();
+  await chooseTheme('light');
+  await page.screenshot({
+    path: `${output}/type-app-light.png`,
+    fullPage: true,
+  });
+  console.log(
+    'PASS Public Sans, readable type sizes, light/dark contrast, theme persistence, cross-tab synchronization, and light dialogs',
+  );
+  assert.deepEqual(errors, []);
 } catch (error) {
   console.error(
     'Browser diagnostics:',

@@ -3,6 +3,17 @@
 React 19 + Vite + TypeScript. The landing page and trading workspace share the
 Glacier design adapted from Farouk's Exodus reference project: silver principal,
 blue glass yield, layered Blender artwork, and the original split animation.
+The UI uses self-hosted Public Sans, 16–18px body copy, stronger headings and
+financial values, and readable labels instead of tiny monospace text.
+
+## Appearance
+
+Use **Light mode / Dark mode** in the app header or desktop landing navigation.
+On a narrow landing page, the same control is inside the navigation menu.
+Frost light mode applies to the entire site, charts, inputs, and dialogs.
+Glacier dark mode remains the default. The choice is stored as
+`exodus-near-theme`, restored before first paint, and synchronized between tabs.
+The switch still works for the current visit if browser storage is unavailable.
 
 ## Run
 
@@ -94,10 +105,14 @@ the local Vite URL. No extra dependency is added to the application.
 
 The browser suite uses explicit wallet, API, and RPC fixtures. It checks request
 payloads and slippage, delayed quote races, market switching, rejection feedback,
-all six screens at 1440/768/390/320 px, mobile navigation, FAQ and split controls,
+all six screens in both themes at 1440/768/390/320 px, mobile navigation, FAQ and split controls,
 dialog focus/keyboard behavior, history failure/recovery, and paused/matured
 exits. It never signs or sends a real transaction. Screenshots and failure
 diagnostics go into the ignored `node_modules/.cache/exodus-qa/` directory.
+Appearance checks verify that Public Sans loads, body copy stays at least 16px,
+visible UI text stays at least 12px, primary text tokens maintain 4.5:1 contrast,
+light dialogs use the light palette, and the theme persists across reloads and
+synchronizes between tabs.
 
 Live verification also checked the hosted health/history endpoints, a successful
 dry-run 1Click quote, real indexed history in the browser, and the actual wallet
@@ -110,7 +125,7 @@ selector. Signed on-chain execution still requires a wallet-driven testnet pass.
 | `src/App.tsx`, `src/lib/navigation.ts`                                             | Landing/app navigation and lazy app loading                            |
 | `src/pages/LandingPage.tsx`                                                        | Product narrative, strategies, markets, FAQ                            |
 | `src/components/Brand.tsx`, `GlassInstrument.tsx`, `public/`                       | Reused brand, responsive artwork, fonts and licenses                   |
-| `src/index.css`                                                                    | Shared tokens, responsive layouts, motion, reduced-motion support      |
+| `src/index.css`, `src/styles/`                                                     | Typography, light/dark palette, responsive layouts, motion             |
 | `src/pages/ApplicationPage.tsx`, `components/Navbar.tsx`                           | Workspace navigation, market selection, faucet and index tools         |
 | `src/components/TradePanel.tsx`, `ProtocolUI.tsx`                                  | PT/YT trade forms, settings, labelled inputs, quote guards             |
 | `src/pages/PoolTab.tsx`, `MintRedeemTab.tsx`, `PortfolioTab.tsx`, `IntentsTab.tsx` | Liquidity, tokenization, holdings, quote preview                       |

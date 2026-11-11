@@ -3,6 +3,9 @@
   background: var(--silver);
   color: var(--primary-text);
 }
+.launch-label-short {
+  display: none;
+}
 .landing h1,
 .landing h2,
 .workspace-title h1,
@@ -328,6 +331,29 @@
   }
 }
 @media (max-width: 1050px) {
+  .desktop-links {
+    display: none;
+  }
+  .landing-nav .mobile-menu-toggle {
+    display: inline-grid;
+  }
+  .mobile-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    padding: 12px 20px;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px var(--shadow);
+  }
+  .mobile-nav a {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    font-size: 15px;
+  }
   .app-breadcrumb {
     display: none;
   }
@@ -354,6 +380,11 @@
   }
   .section-heading > p {
     max-width: 440px;
+  }
+}
+@media (min-width: 761px) {
+  .mobile-theme-row {
+    display: none;
   }
 }
 @media (max-width: 760px) {
@@ -557,5 +588,24 @@
   }
   .claim-panel > .button {
     justify-self: start;
+  }
+}
+@media (max-width: 480px) {
+  .landing-nav {
+    padding-inline: 12px;
+  }
+  .landing-nav .launch-label {
+    display: none;
+  }
+  .landing-nav .launch-label-short {
+    display: inline;
+  }
+  .landing-nav .button-small {
+    padding-inline: 12px;
+    gap: 7px;
+    font-size: 14px;
+  }
+  .landing-nav .nav-actions {
+    gap: 6px;
   }
 }
