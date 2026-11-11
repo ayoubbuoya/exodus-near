@@ -250,7 +250,7 @@ async function chooseTheme(theme) {
 async function checkAppearance(theme) {
   await page.evaluate(() => document.fonts.ready);
   const colors = await page.evaluate(() => {
-    const style = getComputedStyle(document.documentElement);
+    const style = getComputedStyle(document.querySelector('.application') || document.documentElement);
     return Object.fromEntries(
       ['bg', 'text', 'muted', 'faint', 'yield'].map((name) => [
         name,
@@ -267,6 +267,10 @@ async function checkAppearance(theme) {
     await page.evaluate(() => document.fonts.check('500 16px "Public Sans"')),
     'Public Sans did not load',
   );
+  if (await page.locator('.application').count()) {
+    assert.ok(await page.evaluate(() => document.fonts.check('400 16px Inter')), 'Inter did not load');
+    assert.ok((await page.locator('.application').evaluate((node) => getComputedStyle(node).fontFamily)).includes('Inter'));
+  }
   const unreadable = await page.evaluate(() =>
     [...document.querySelectorAll('p, label, button, select, input, span')]
       .filter((node) => {
@@ -365,8 +369,27 @@ try {
   );
 
   await resize({ width: 1440, height: 1000 });
-  await navigate('fix', 'Fixed yield.');
+  await navigate('fix', 'Fixed yield');
   await page.getByText('3 indexed snapshots', { exact: true }).waitFor();
+  const frame = await page.evaluate(() => {
+    const sidebar = document.querySelector('.app-sidebar');
+    const form = document.querySelector('.trade-primary');
+    const position = document.querySelector('.market-position');
+    return {
+      sidebarLeft: sidebar.getBoundingClientRect().left,
+      sidebarRadius: getComputedStyle(sidebar).borderRadius,
+      topbarTop: document.querySelector('.app-topbar').getBoundingClientRect().top,
+      formRight: form.getBoundingClientRect().right,
+      positionLeft: position.getBoundingClientRect().left,
+      font: getComputedStyle(document.querySelector('.application')).fontFamily,
+    };
+  });
+  assert.equal(frame.sidebarLeft, 12);
+  assert.equal(frame.sidebarRadius, '24px');
+  assert.ok(frame.topbarTop < 100, 'Fixed sidebar must not push the workspace down');
+  assert.ok(frame.formRight < frame.positionLeft, 'Trade form should sit beside the position card');
+  assert.ok(frame.font.includes('Inter'));
+  await page.screenshot({ path: `${output}/app-fixed-dark.png`, fullPage: true });
   await page
     .locator('.app-topbar')
     .getByRole('button', { name: 'Connect wallet', exact: true })
@@ -448,7 +471,7 @@ try {
     'PASS delayed quote race handling and market selection deep links',
   );
 
-  await navigate('long', 'Long yield.');
+  await navigate('long', 'Long yield');
   await page.getByLabel('You pay', { exact: true }).fill('1');
   await waitFor(
     () => page.locator('form .action-button').isEnabled(),
@@ -468,7 +491,7 @@ try {
   );
   console.log('PASS YT buy/sell transaction requests');
 
-  await navigate('mint-redeem', 'Mint & redeem.');
+  await navigate('mint-redeem', 'Mint & redeem');
   await page.getByLabel('Deposit LST', { exact: true }).fill('10');
   assert.ok(
     (await page.locator('.mint-output').textContent()).includes('12.5'),
@@ -489,7 +512,7 @@ try {
   await page.getByLabel('PT to redeem', { exact: true }).fill('2');
   assert.ok(await page.locator('form .action-button').isDisabled());
 
-  await navigate('pool', 'Liquidity.');
+  await navigate('pool', 'Liquidity');
   await page.getByLabel('Deposit LST', { exact: true }).fill('10');
   assert.equal(await page.getByLabel('Pair with principal').inputValue(), '10');
   const addLp = await confirmAction(page.locator('form .action-button'));
@@ -508,7 +531,7 @@ try {
     'PASS mint, paired redemption, pre-maturity guard, proportional liquidity, and withdrawal minimums',
   );
 
-  await navigate('portfolio', 'Portfolio.');
+  await navigate('portfolio', 'Portfolio');
   await page
     .getByRole('heading', { name: 'Yield, ready when you are.' })
     .waitFor();
@@ -538,7 +561,7 @@ try {
     .getByRole('button', { name: 'Refresh market data', exact: true })
     .click();
   await page.getByText('Paused · exits open', { exact: true }).waitFor();
-  await navigate('mint-redeem', 'Mint & redeem.');
+  await navigate('mint-redeem', 'Mint & redeem');
   await page.getByLabel('Deposit LST', { exact: true }).fill('1');
   assert.ok(await page.locator('form .action-button').isDisabled());
   await page.getByRole('button', { name: 'PT + YT', exact: true }).click();
@@ -561,7 +584,7 @@ try {
     (await confirmAction(page.locator('form .action-button'))).methodName,
     'redeem_pt',
   );
-  await navigate('pool', 'Liquidity.');
+  await navigate('pool', 'Liquidity');
   await page
     .getByRole('button', { name: 'Remove liquidity', exact: true })
     .click();
@@ -570,7 +593,7 @@ try {
     (await confirmAction(page.locator('form .action-button'))).methodName,
     'remove_liquidity',
   );
-  await navigate('portfolio', 'Portfolio.');
+  await navigate('portfolio', 'Portfolio');
   assert.equal(
     (
       await confirmAction(
@@ -583,7 +606,8 @@ try {
     'PASS paused and matured market exits: paired redemption, matured PT, liquidity withdrawal, interest claim',
   );
 
-  await navigate('intents', 'Cross-chain.');
+  await navigate('intents', 'Cross-chain');
+  assert.equal(await page.locator('.market-toolbar').count(), 0, 'Cross-chain quotes should not show an unrelated testnet market selector');
   await waitFor(
     () =>
       page
@@ -601,7 +625,7 @@ try {
 
   scenario.paused = false;
   scenario.matured = false;
-  await navigate('fix', 'Fixed yield.');
+  await navigate('fix', 'Fixed yield');
   await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
   await page
     .getByRole('heading', {
@@ -619,19 +643,58 @@ try {
   assert.equal(await page.locator('dialog[open]').count(), 0);
   for (const theme of ['dark', 'light']) {
     await chooseTheme(theme);
-    for (const width of [1440, 768, 390, 320]) {
-      await resize({ width, height: 900 });
+    for (const [width, height] of [[1440, 900], [1280, 650], [1120, 620], [1024, 600], [931, 700], [768, 900], [390, 844], [320, 700]]) {
+      await resize({ width, height });
       for (const [tab, label] of [
-        ['fix', 'Fixed yield.'],
-        ['long', 'Long yield.'],
-        ['pool', 'Liquidity.'],
-        ['mint-redeem', 'Mint & redeem.'],
-        ['portfolio', 'Portfolio.'],
-        ['intents', 'Cross-chain.'],
+        ['fix', 'Fixed yield'],
+        ['long', 'Long yield'],
+        ['pool', 'Liquidity'],
+        ['mint-redeem', 'Mint & redeem'],
+        ['portfolio', 'Portfolio'],
+        ['intents', 'Cross-chain'],
       ]) {
         await navigate(tab, label);
         await noOverflow(`${theme} ${tab} ${width}`);
         await checkAppearance(theme);
+        if (width <= 480) {
+          const centers = await page.locator('.app-topbar-actions').evaluate((node) => [...node.children].map((child) => {
+            const bounds = child.getBoundingClientRect();
+            return bounds.top + bounds.height / 2;
+          }));
+          assert.ok(Math.max(...centers) - Math.min(...centers) < 2, 'Mobile wallet controls should fit on one row');
+        }
+        if (width >= 1024) {
+          const sidebar = await page.locator('.app-sidebar').evaluate((node) => {
+            const bounds = node.getBoundingClientRect();
+            const nav = node.querySelector('nav');
+            const bottom = node.querySelector('.sidebar-bottom');
+            return {
+              wholeFits: node.scrollHeight <= node.clientHeight + 1,
+              linksFit: nav.scrollHeight <= nav.clientHeight + 1,
+              footerFits: bottom.getBoundingClientRect().bottom <= bounds.bottom - 8,
+              noOverlap: nav.getBoundingClientRect().bottom <= bottom.getBoundingClientRect().top + 1,
+            };
+          });
+          assert.deepEqual(sidebar, { wholeFits: true, linksFit: true, footerFits: true, noOverlap: true }, `Sidebar clips at ${width}x${height}`);
+        }
+        if (tab === 'intents') {
+          const spacing = await page.evaluate(() => ({
+            titleBottom: document.querySelector('.workspace-title').getBoundingClientRect().bottom,
+            formTop: document.querySelector('.intents-layout .trade-panel').getBoundingClientRect().top,
+          }));
+          assert.ok(spacing.formTop - spacing.titleBottom >= 20, 'Cross-chain form needs separation from the page heading');
+        }
+        const clippedMarketLinks = await page.locator('.market-action-nav').evaluateAll((nodes) => nodes.flatMap((nav) => {
+          const bounds = nav.getBoundingClientRect();
+          return [...nav.querySelectorAll('a')].filter((link) => {
+            const rect = link.getBoundingClientRect();
+            return rect.left < bounds.left || rect.right > bounds.right + 1;
+          }).map((link) => link.textContent);
+        }));
+        assert.deepEqual(clippedMarketLinks, [], 'Market action links should stay fully visible');
+        if (width === 1440 || width === 1280 || width === 390) {
+          await page.screenshot({ path: `${output}/app-${tab}-${theme}-${width}.png`, fullPage: true });
+        }
       }
     }
   }
@@ -641,7 +704,7 @@ try {
     .locator('#workspace-sidebar')
     .getByRole('link', { name: 'Portfolio', exact: true })
     .click();
-  await page.getByRole('heading', { level: 1, name: 'Portfolio.' }).waitFor();
+  await page.getByRole('heading', { level: 1, name: 'Portfolio' }).waitFor();
   assert.equal(
     await page
       .getByRole('button', { name: 'Open workspace navigation' })
@@ -649,11 +712,11 @@ try {
     'false',
   );
   console.log(
-    'PASS all six screens at four widths, mobile menu, native dialog focus trap and keyboard dismissal',
+    'PASS all six screens at eight viewport sizes, short laptop sidebar, unclipped navigation, mobile menu, and dialog keyboard controls',
   );
 
   scenario.historyError = true;
-  await navigate('fix', 'Fixed yield.');
+  await navigate('fix', 'Fixed yield');
   await page
     .getByText('Yield history is temporarily unavailable.', { exact: true })
     .waitFor();
@@ -669,10 +732,10 @@ try {
     .getByRole('button', { name: 'Refresh history', exact: true })
     .click();
   await page.getByText('3 indexed snapshots', { exact: true }).waitFor();
-  await navigate('long', 'Long yield.');
+  await navigate('long', 'Long yield');
   await page.getByText('3 indexed snapshots', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Disconnect wallet' }).click();
-  await navigate('portfolio', 'Portfolio.');
+  await navigate('portfolio', 'Portfolio');
   await page
     .getByRole('heading', { name: 'A clearer picture starts here.' })
     .waitFor();
@@ -691,7 +754,7 @@ try {
     '#eef2f8',
   );
   await resize({ width: 1440, height: 1000 });
-  await navigate('fix', 'Fixed yield.');
+  await navigate('fix', 'Fixed yield');
   const type = await page.locator('.workspace-title p').evaluate((node) => {
     const css = getComputedStyle(node);
     return {
@@ -701,9 +764,9 @@ try {
     };
   });
   assert.ok(
-    type.size >= 16 &&
-      type.weight >= 500 &&
-      type.family.includes('Public Sans'),
+    type.size >= 14 &&
+      type.weight >= 400 &&
+      type.family.includes('Inter'),
   );
   await page.getByRole('button', { name: 'Quick tour', exact: true }).click();
   assert.equal(
@@ -733,7 +796,7 @@ try {
     fullPage: true,
   });
   console.log(
-    'PASS Public Sans, readable type sizes, light/dark contrast, theme persistence, cross-tab synchronization, and light dialogs',
+    'PASS landing Public Sans, app Inter, readable type sizes, light/dark contrast, theme persistence, cross-tab synchronization, and light dialogs',
   );
   assert.deepEqual(errors, []);
 } catch (error) {

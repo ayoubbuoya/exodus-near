@@ -7,6 +7,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { ActionButton, FormNotice, SummaryRow } from '../components/ProtocolUI';
+import { Mark } from '../components/Brand';
 import {
   POPULAR_TOKENS,
   fetchSupportedTokens,
@@ -94,45 +95,41 @@ export function IntentsTab() {
   return (
     <div className="intents-layout">
       <section className="intents-story">
-        <span className="eyebrow">NEAR INTENTS · 1CLICK</span>
-        <h2>
-          Less distance.
-          <br />
-          <span className="muted">More possibility.</span>
-        </h2>
+        <span className="eyebrow">POWERED BY NEAR INTENTS</span>
+        <h2>One route. Less friction.</h2>
         <p>
-          Explore routes from your favorite chain to wrapped NEAR. Get a real
-          quote from the 1Click solver network, with no wallet or gas needed to
-          preview.
+          Compare the estimated output, fees, and arrival time before moving
+          between chains.
         </p>
         <div className="route-story">
-          <span>
-            <Globe size={16} />
-            {chainLabel(token.blockchain).toUpperCase()}
-          </span>
-          <ArrowRight size={17} />
-          <span>NEAR INTENTS</span>
-          <ArrowRight size={17} />
-          <span>NEAR</span>
+          <div className="route-endpoint">
+            <span className="route-chain-icon"><Globe size={20} /></span>
+            <span><strong>{chainLabel(token.blockchain)}</strong><small>{token.symbol}</small></span>
+          </div>
+          <span className="route-connector"><ArrowRight size={16} /></span>
+          <div className="route-endpoint">
+            <span className="route-chain-icon"><Mark /></span>
+            <span><strong>NEAR</strong><small>wNEAR</small></span>
+          </div>
         </div>
         <div className="intent-step">
           <span>01</span>
           <div>
-            <h3>Choose where you start.</h3>
+            <h3>Choose your asset</h3>
             <p>Select a token and its origin chain.</p>
           </div>
         </div>
         <div className="intent-step">
           <span>02</span>
           <div>
-            <h3>See the route.</h3>
+            <h3>Compare a live quote</h3>
             <p>Compare the estimated output, fees, and time.</p>
           </div>
         </div>
         <div className="intent-step">
           <span>03</span>
           <div>
-            <h3>Explore without moving funds.</h3>
+            <h3>Preview with no commitment</h3>
             <p>
               Mainnet quotes are separate from Exodus testnet markets. No
               deposit address is generated here.
@@ -160,9 +157,10 @@ export function IntentsTab() {
             <Globe size={17} />
           </span>
           <div>
-            <h2>A route worth exploring.</h2>
-            <p>Live mainnet quotes · Preview only</p>
+            <h2>Preview a route</h2>
+            <p>Find your way to NEAR</p>
           </div>
+          <span className="route-preview-badge">Preview only</span>
         </div>
         <fieldset className="intents-fields" disabled={busy}>
           <label htmlFor="origin-token" className="field-label">
@@ -185,10 +183,9 @@ export function IntentsTab() {
               </option>
             ))}
           </select>
-          <label className="field-label" htmlFor="intents-amount">
-            You send
-          </label>
-          <div className="intent-amount">
+          <div className="intent-amount amount-field">
+            <label className="field-label" htmlFor="intents-amount">You send</label>
+            <div className="amount-input-row">
             <input
               id="intents-amount"
               inputMode="decimal"
@@ -198,8 +195,10 @@ export function IntentsTab() {
                 reset();
               }}
               autoComplete="off"
+              spellCheck={false}
             />
-            <span>{token.symbol}</span>
+            <span className="amount-token"><span className="mini-token">{token.symbol.slice(0, 1)}</span>{token.symbol}</span>
+            </div>
           </div>
         </fieldset>
         <div className="swap-divider">
@@ -217,7 +216,7 @@ export function IntentsTab() {
                     })
                   : '—'}
             </strong>
-            <span>wNEAR</span>
+            <span className="amount-token"><span className="mini-token">N</span>wNEAR</span>
           </div>
         </div>
         <div className="trade-summary">

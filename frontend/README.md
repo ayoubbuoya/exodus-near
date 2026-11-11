@@ -3,8 +3,10 @@
 React 19 + Vite + TypeScript. The landing page and trading workspace share the
 Glacier design adapted from Farouk's Exodus reference project: silver principal,
 blue glass yield, layered Blender artwork, and the original split animation.
-The UI uses self-hosted Public Sans, 16–18px body copy, stronger headings and
-financial values, and readable labels instead of tiny monospace text.
+The landing page uses self-hosted Public Sans. The app follows the reference's
+Inter typography, floating glass navigation, rounded market stat cards, and
+action panels beside position summaries. Both appearances use readable labels
+and tabular financial values; monospace is reserved for account identifiers.
 
 ## Appearance
 

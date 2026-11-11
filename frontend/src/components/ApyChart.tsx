@@ -64,7 +64,7 @@ export function ApyChart() {
     <section className="chart-panel" aria-label="Indexed yield history">
       <div className="chart-header">
         <div>
-          <span className="eyebrow">A LITTLE PERSPECTIVE</span>
+          <span className="eyebrow">MARKET HISTORY</span>
           <h2>Yield over time</h2>
         </div>
         <div className="chart-ranges" aria-label="Chart time range">

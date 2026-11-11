@@ -22,6 +22,7 @@ import { MarketProvider, useMarket } from '../context/MarketContext';
 import { Brand, Mark } from '../components/Brand';
 import { Navbar } from '../components/Navbar';
 import { MarketStats } from '../components/MarketStats';
+import { MarketPosition } from '../components/MarketPosition';
 import { TxModal } from '../components/TxModal';
 import { JudgeTourModal } from '../components/JudgeTourModal';
 import { FixYieldTab } from './FixYieldTab';
@@ -45,43 +46,37 @@ const tabs = [
     id: 'fix',
     label: 'Fixed yield',
     icon: TrendingUp,
-    subtitle: 'A little more certainty.',
     desc: 'Buy principal tokens at a discount. Redeem for their NEAR value at maturity.',
   },
   {
     id: 'long',
     label: 'Long yield',
     icon: Zap,
-    subtitle: 'A view on what’s next.',
     desc: 'Trade future staking yield, without buying the underlying principal.',
   },
   {
     id: 'pool',
     label: 'Liquidity',
     icon: Droplets,
-    subtitle: 'Be part of the market.',
     desc: 'Supply PT and LST to the AMM. Earn a share of the fees from every swap.',
   },
   {
     id: 'mint-redeem',
     label: 'Mint & redeem',
     icon: Split,
-    subtitle: 'One asset. Two possibilities.',
     desc: 'Split your LST into principal and yield, or bring the pieces back together.',
   },
   {
     id: 'portfolio',
     label: 'Portfolio',
     icon: Briefcase,
-    subtitle: 'Your positions, in perspective.',
     desc: 'See your holdings, collect staking yield, and plan your next move.',
   },
   {
     id: 'intents',
     label: 'Cross-chain',
     icon: Globe,
-    subtitle: 'Start somewhere. Go NEAR.',
-    desc: 'Preview live mainnet routes through NEAR Intents. This testnet app never moves cross-chain funds.',
+    desc: 'Explore routes to NEAR with live quotes from NEAR Intents.',
   },
 ] as const;
 
@@ -115,6 +110,14 @@ function Workspace({
   useEffect(() => {
     setMobileMenu(false);
   }, [tab]);
+  useEffect(() => {
+    if (!mobileMenu) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenu(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mobileMenu]);
   const panel =
     tab === 'fix' ? (
       <FixYieldTab onTxUpdate={setTx} />
@@ -131,6 +134,9 @@ function Workspace({
     );
   return (
     <div className="application">
+      <div className="app-backdrop" aria-hidden="true">
+        <i /><i /><i />
+      </div>
       <a
         className="skip-link"
         href="#app-main"
@@ -162,7 +168,7 @@ function Workspace({
         className={`app-sidebar ${mobileMenu ? 'sidebar-open' : ''}`}
       >
         <Brand />
-        <div className="sidebar-section-label eyebrow">YOUR WORKSPACE</div>
+        <div className="sidebar-section-label eyebrow">WORKSPACE</div>
         <nav aria-label="Workspace navigation">
           {tabs.map(({ id, label, icon: Icon }) => (
             <a
@@ -185,17 +191,12 @@ function Workspace({
               setMobileMenu(false);
             }}
           >
-            <img
-              src="/glass/hero-joined-sm.webp"
-              alt=""
-              width="768"
-              height="512"
-            />
-            <span className="eyebrow">NEW TO EXODUS?</span>
-            <strong>A little orientation.</strong>
+            <CircleHelp size={19} strokeWidth={1.5} />
             <span>
-              Take the 60-second tour <ArrowRight size={13} />
+              <strong>New to Exodus?</strong>
+              <span>Take the quick tour</span>
             </span>
+            <ArrowRight size={15} />
           </button>
           <a
             className="sidebar-resource"
@@ -218,17 +219,16 @@ function Workspace({
         <main id="app-main" tabIndex={-1} className="app-main">
           <div className="workspace-title">
             <div>
-              <span className="eyebrow">{current.subtitle}</span>
-              <h1>
-                {current.label}
-                <span className="title-dot">.</span>
-              </h1>
+              <span className="eyebrow">{tab === 'portfolio' ? 'YOUR WORKSPACE' : tab === 'intents' ? 'NEAR INTENTS' : 'YIELD MARKETS'}</span>
+              <h1>{current.label}</h1>
               <p>{current.desc}</p>
             </div>
             <button className="help-button" onClick={() => setTour(true)}>
               <CircleHelp size={15} /> Quick tour
             </button>
           </div>
+          {tab !== 'intents' && (
+          <section className="market-overview" aria-label="Market overview">
           <div className="market-toolbar">
             <div className="market-select-group">
               <span
@@ -302,7 +302,7 @@ function Workspace({
               </button>
             </div>
           )}
-          {selectedMarket.isDemo && tab !== 'intents' && (
+          {selectedMarket.isDemo && (
             <div className="demo-notice">
               <span className="demo-notice-label">DEMO</span>
               <span>
@@ -311,19 +311,25 @@ function Workspace({
               </span>
             </div>
           )}
-          {tab !== 'portfolio' && tab !== 'intents' && <MarketStats />}
+          {tab !== 'portfolio' && <MarketStats />}
+          </section>
+          )}
+          {tab !== 'portfolio' && tab !== 'intents' && (
+            <nav className="market-action-nav" aria-label="Market actions">
+              {tabs.slice(0, 4).map(({ id, label, icon: Icon }) => (
+                <a href={appHref(id, selectedMarket.id)} key={id} aria-current={tab === id ? 'page' : undefined}>
+                  <Icon size={15} strokeWidth={1.5} />{label}
+                  {(id === 'fix' || id === 'long') && <span>{id === 'fix' ? 'PT' : 'YT'}</span>}
+                </a>
+              ))}
+            </nav>
+          )}
           {tab === 'fix' || tab === 'long' ? (
+            <>
             <div className="trade-layout">
+              <div className="trade-primary" key={`${tab}-${selectedMarket.id}`}>{panel}</div>
               <div className="market-insights">
-                <Suspense
-                  fallback={
-                    <div className="chart-panel chart-empty">
-                      Loading yield history…
-                    </div>
-                  }
-                >
-                  <ApyChart key={selectedMarket.id} />
-                </Suspense>
+                <MarketPosition />
                 <div className="insight-note">
                   <span
                     className={`token-symbol ${tab === 'fix' ? 'pt-symbol' : 'yt-symbol'}`}
@@ -333,8 +339,8 @@ function Workspace({
                   <div>
                     <h2>
                       {tab === 'fix'
-                        ? 'The principal of the thing.'
-                        : 'Give your outlook an outlet.'}
+                        ? 'Fixed yield, explained'
+                        : 'Understanding yield tokens'}
                     </h2>
                     <p>
                       {tab === 'fix'
@@ -348,10 +354,13 @@ function Workspace({
                     </span>
                   </div>
                 </div>
-                <MarketTools onTxUpdate={setTx} />
               </div>
-              <div key={`${tab}-${selectedMarket.id}`}>{panel}</div>
             </div>
+            <Suspense fallback={<div className="chart-panel chart-empty">Loading yield history…</div>}>
+              <ApyChart key={selectedMarket.id} />
+            </Suspense>
+            <MarketTools onTxUpdate={setTx} />
+            </>
           ) : (
             <div
               key={`${tab}-${selectedMarket.id}`}

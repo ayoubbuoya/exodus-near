@@ -177,7 +177,7 @@ export function TradePanel({
           {token}
         </span>
         <div>
-          <h2>{token === 'PT' ? 'Make it fixed.' : 'Trade the future.'}</h2>
+          <h2>{token === 'PT' ? 'Trade principal' : 'Trade yield'}</h2>
           <p>
             {token === 'PT' ? 'Principal token' : 'Yield token'} ·{' '}
             {selectedMarket.symbol}

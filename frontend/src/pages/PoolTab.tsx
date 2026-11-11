@@ -128,19 +128,8 @@ export function PoolTab({
   return (
     <div className="pool-layout">
       <section className="pool-story">
-        <span className="eyebrow">A SHARE IN THE FLOW</span>
-        <h2>
-          Put liquidity
-          <br />
-          <span className="muted">to work.</span>
-        </h2>
-        <div className="pool-illustration" aria-hidden="true">
-          <span className="pool-orbit orbit-one" />
-          <span className="pool-orbit orbit-two" />
-          <span className="orbit-token orbit-pt">PT</span>
-          <span className="orbit-token orbit-lst">{selectedMarket.symbol}</span>
-          <Droplets size={32} strokeWidth={1} />
-        </div>
+        <span className="eyebrow">PT / {selectedMarket.symbol}</span>
+        <h2>Your liquidity</h2>
         <div className="trade-summary">
           <SummaryRow label="Your LP position">
             {balancesReady ? formatUnits(userPosition?.lp_balance, 6) : '—'} LP
@@ -182,7 +171,7 @@ export function PoolTab({
           </span>
           <div>
             <h2>
-              {mode === 'add' ? 'Keep the market moving.' : 'Take your share.'}
+              {mode === 'add' ? 'Supply liquidity' : 'Withdraw liquidity'}
             </h2>
             <p>PT / {selectedMarket.symbol} liquidity</p>
           </div>

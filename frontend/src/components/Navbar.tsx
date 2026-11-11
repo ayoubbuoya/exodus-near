@@ -16,7 +16,9 @@ export function Navbar({ title }: { title: string }) {
       <div className="app-topbar-actions">
         <ThemeToggle />
         <span className="badge">
-          <span className="status-dot" /> NEAR Testnet
+          <span className="status-dot" />
+          <span className="network-label">NEAR Testnet</span>
+          <span className="network-label-short">Testnet</span>
         </span>
         {accountId ? (
           <div className="wallet-connected">

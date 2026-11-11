@@ -100,19 +100,15 @@ export function MintRedeemTab({
   return (
     <div className="tokenize-layout">
       <section className="tokenize-story">
-        <span className="eyebrow">THE WHOLE, AND ITS PARTS</span>
+        <span className="eyebrow">PRINCIPAL + YIELD</span>
         <h2>
           {mode === 'mint' ? (
             <>
-              Make room for
-              <br />
-              <span className="muted">more possibilities.</span>
+              How tokenization works
             </>
           ) : (
             <>
-              Bring it
-              <br />
-              <span className="muted">back together.</span>
+              Redeeming your tokens
             </>
           )}
         </h2>
@@ -147,8 +143,8 @@ export function MintRedeemTab({
           <div>
             <h2>
               {mode === 'mint'
-                ? 'Separate the possibilities.'
-                : 'Reclaim your LST.'}
+                ? 'Mint PT + YT'
+                : 'Redeem for LST'}
             </h2>
             <p>
               {selectedMarket.symbol} · {selectedMarket.maturityFormatted}

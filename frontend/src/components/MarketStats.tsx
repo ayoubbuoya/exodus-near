@@ -1,4 +1,5 @@
 import { useMarket } from '../context/MarketContext';
+import { CalendarClock, Coins, LockKeyhole, Layers } from 'lucide-react';
 import {
   calcImpliedApyPercent,
   formatIndex,
@@ -12,7 +13,7 @@ export function MarketStats() {
   return (
     <div className="market-stats">
       <div>
-        <span className="eyebrow">IMPLIED FIXED APY</span>
+        <span className="eyebrow"><LockKeyhole size={14} /> FIXED APY</span>
         <strong>
           {poolData && BigInt(poolData.total_lp) > 0n
             ? formatPercent(
@@ -23,7 +24,7 @@ export function MarketStats() {
         <span>Priced by the AMM</span>
       </div>
       <div>
-        <span className="eyebrow">STAKING INDEX</span>
+        <span className="eyebrow"><Layers size={14} /> STAKING INDEX</span>
         <strong>
           {marketData ? formatIndex(marketData.py_index) : '—'}{' '}
           <small>NEAR</small>
@@ -31,7 +32,7 @@ export function MarketStats() {
         <span>Per underlying LST</span>
       </div>
       <div>
-        <span className="eyebrow">MATURITY</span>
+        <span className="eyebrow"><CalendarClock size={14} /> MATURITY</span>
         <strong className="stat-date">
           {selectedMarket.maturityFormatted}
         </strong>
@@ -41,7 +42,7 @@ export function MarketStats() {
         </span>
       </div>
       <div>
-        <span className="eyebrow">POOL RESERVES</span>
+        <span className="eyebrow"><Coins size={14} /> POOL RESERVES</span>
         <strong>
           {poolData ? formatUnits(poolData.total_sy, 2) : '—'}{' '}
           <small>{selectedMarket.symbol}</small>
