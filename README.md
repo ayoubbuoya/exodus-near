@@ -21,8 +21,7 @@
 5. [How it works](#5-how-it-works)
 6. [Repository layout](#6-repository-layout)
 7. [Known limitations](#7-known-limitations)
-8. [Disclosures and credits](#8-disclosures-and-credits)
-9. [License](#9-license)
+8. [License](#8-license)
 
 ---
 
@@ -190,11 +189,17 @@ All state changes emit NEP-297 `EVENT_JSON` logs with `standard: "exodus"`, `ver
 
 Logit curve, as implemented in `market.rs`:
 
-$$\tau = \text{expiry} - \text{now}, \qquad \text{rate\_scalar} = \text{scalar\_root} \cdot \frac{\text{YEAR}}{\tau}$$
+```math
+\tau = \text{expiry} - \text{now}, \qquad \text{rate\_scalar} = \text{scalar\_root} \cdot \frac{\text{YEAR}}{\tau}
+```
 
-$$p = \frac{\text{total\_pt}}{\text{total\_pt} + \text{total\_sy} \cdot \text{index}}$$
+```math
+p = \frac{\text{total\_pt}}{\text{total\_pt} + \text{total\_sy} \cdot \text{index}}
+```
 
-$$\text{ExchangeRate}(p) = \frac{\ln\left(\frac{p}{1-p}\right)}{\text{rate\_scalar}} + \text{rate\_anchor}, \qquad \text{PT price} = \frac{1}{\text{ExchangeRate}}$$
+```math
+\text{ExchangeRate}(p) = \frac{\ln\left(\frac{p}{1-p}\right)}{\text{rate\_scalar}} + \text{rate\_anchor}, \qquad \text{PT price} = \frac{1}{\text{ExchangeRate}}
+```
 
 The `rate_anchor` is recomputed before each trade so the implied rate stays continuous between trades. As maturity approaches, `rate_scalar` grows, so the curve flattens and the PT price converges to 1. This reduces (but does not remove) impermanent loss for LPs compared with a constant-product pool. Exact-input swaps are solved with a bounded 64-step binary search.
 
@@ -237,17 +242,6 @@ cargo near build non-reproducible-wasm --no-abi --manifest-path contracts/market
 
 ---
 
-## 8. Disclosures and credits
-
-- **Prior work:** the author previously built *Exodus on Canton* (Daml, permissioned; 2nd place at HackCanton S3). The concept is shared. **This NEAR codebase is a new implementation** written for this hackathon.
-- **Pendle Finance V2:** design reference for PT/YT tokenization and the logit-curve AMM (ported from Solidity concepts to Rust).
-- **Balancer `LogExpMath`:** reference for the fixed-point `ln`/`exp` approach.
-- **NEAR Intents 1Click** (`https://1click.chaindefuser.com/v0`): cross-chain quote API.
-- **Fonts:** Inter, Public Sans and Geist Mono under their own licenses (`frontend/public/fonts/`).
-- **AI assistance:** built with AI coding assistants for pair-programming, test writing and documentation. All code was reviewed by the author.
-
----
-
-## 9. License
+## 8. License
 
 [MIT](LICENSE) © 2026 Ayoub
