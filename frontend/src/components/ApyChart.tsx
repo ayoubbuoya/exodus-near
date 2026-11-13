@@ -1,115 +1,213 @@
-import React, { useEffect, useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useEffect, useState } from 'react';
+import {
+  Area,
+  CartesianGrid,
+  Line,
+  ComposedChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Activity, RefreshCw } from 'lucide-react';
 import { useMarket } from '../context/MarketContext';
 import { fetchMarketHistory } from '../lib/rpc';
 import type { MarketHistoryPoint } from '../types';
-import { Activity } from 'lucide-react';
 
-export const ApyChart: React.FC = () => {
+export function ApyChart() {
   const { selectedMarket } = useMarket();
   const [data, setData] = useState<MarketHistoryPoint[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [range, setRange] = useState<'1H' | '24H' | 'ALL'>('ALL');
   useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-
-    fetchMarketHistory(selectedMarket.id)
-      .then((points) => {
-        if (mounted) {
-          // Format timestamps for display
-          const formatted = points.map((p) => {
-            const date = new Date(p.recorded_at);
-            return {
-              ...p,
-              timeLabel: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
-            };
-          });
-          setData(formatted);
+    let active = true;
+    async function load() {
+      try {
+        setLoading(true);
+        const points = await fetchMarketHistory(
+          selectedMarket.marketContractId,
+        );
+        if (active) {
+          setData(points);
+          setError(null);
         }
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-
+      } catch {
+        if (active) {
+          setData([]);
+          setError('Yield history is temporarily unavailable.');
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    setData([]);
+    void load();
+    const interval = setInterval(() => void load(), 60000);
     return () => {
-      mounted = false;
+      active = false;
+      clearInterval(interval);
     };
-  }, [selectedMarket]);
-
+  }, [selectedMarket.marketContractId, retry]);
+  const cutoff =
+    range === 'ALL' ? 0 : Date.now() - (range === '1H' ? 3600000 : 86400000);
+  const points = data
+    .filter((point) => Date.parse(point.recorded_at) >= cutoff)
+    .map((point) => ({ ...point, timestamp: Date.parse(point.recorded_at) }));
+  const timeLabel = (value: number) =>
+    new Date(value).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   return (
-    <div className="glass-panel rounded-2xl p-5 mb-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800/80 gap-2">
-        <div className="flex items-center space-x-2">
-          <Activity className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-sm font-bold text-slate-100">
-            Yield History: Implied APY vs Underlying APY
-          </h3>
+    <section className="chart-panel" aria-label="Indexed yield history">
+      <div className="chart-header">
+        <div>
+          <span className="eyebrow">MARKET HISTORY</span>
+          <h2>Yield over time</h2>
         </div>
-        <div className="flex items-center space-x-4 text-xs font-semibold">
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-            <span className="text-slate-300">PT Implied APY (Fixed)</span>
-          </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span className="text-slate-300">Underlying APY (Variable)</span>
-          </div>
+        <div className="chart-ranges" aria-label="Chart time range">
+          {(['1H', '24H', 'ALL'] as const).map((value) => (
+            <button
+              key={value}
+              className={range === value ? 'selected' : ''}
+              aria-pressed={range === value}
+              onClick={() => setRange(value)}
+            >
+              {value}
+            </button>
+          ))}
         </div>
       </div>
-
-      <div className="h-64 w-full mt-4">
-        {loading ? (
-          <div className="w-full h-full flex items-center justify-center text-sm text-slate-500">
-            Loading chart history...
+      <div className="chart-legend">
+        <span>
+          <i /> Implied fixed APY
+        </span>
+        <span>
+          <i /> Staking benchmark*
+        </span>
+      </div>
+      <div className="yield-chart">
+        {loading && !data.length ? (
+          <div className="chart-empty">
+            <Activity size={24} className="animate-pulse" />
+            <span>Loading indexed market history…</span>
           </div>
-        ) : data.length === 0 ? (
-          <div className="w-full h-full flex items-center justify-center text-sm text-slate-500">
-            No history recorded yet
+        ) : error ? (
+          <div className="chart-empty">
+            <Activity size={24} />
+            <span>{error}</span>
+            <button className="text-link" onClick={() => setRetry(retry + 1)}>
+              <RefreshCw size={12} />
+              Try again
+            </button>
+          </div>
+        ) : !points.length ? (
+          <div className="chart-empty">
+            <Activity size={24} />
+            <span>No snapshots in this time range.</span>
+            <span>Indexed history appears here as the keeper records it.</span>
+            <button
+              className="text-link"
+              onClick={() => setRetry((count) => count + 1)}
+            >
+              <RefreshCw size={12} />
+              Refresh history
+            </button>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="timeLabel" stroke="#64748b" fontSize={11} tickLine={false} />
-              <YAxis
-                stroke="#64748b"
-                fontSize={11}
+            <ComposedChart
+              data={points}
+              margin={{ top: 12, right: 10, left: -24, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="yield-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--chart-fixed)"
+                    stopOpacity={0.13}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--chart-fixed)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="var(--chart-grid)" />
+              <XAxis
+                dataKey="timestamp"
+                type="number"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={timeLabel}
+                stroke="var(--chart-axis)"
                 tickLine={false}
-                domain={['dataMin - 1', 'dataMax + 1']}
-                unit="%"
+                axisLine={false}
+                fontSize={12}
+                minTickGap={60}
+              />
+              <YAxis
+                tickFormatter={(n: number) => `${n}%`}
+                stroke="var(--chart-axis)"
+                tickLine={false}
+                axisLine={false}
+                fontSize={12}
+                domain={[0, 'auto']}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0b1329',
-                  borderColor: '#1e293b',
-                  borderRadius: '0.75rem',
-                  fontSize: '12px',
-                  color: '#f1f5f9',
+                  background: 'var(--panel)',
+                  border: '1px solid var(--line-strong)',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  color: 'var(--text)',
                 }}
-                formatter={(value: any) => [`${Number(value).toFixed(2)}%`, '']}
+                labelFormatter={(value) =>
+                  new Date(Number(value)).toLocaleString()
+                }
+                formatter={(value, name) => [
+                  `${Number(value).toFixed(2)}%`,
+                  name,
+                ]}
               />
-              <Line
-                type="monotone"
+              <Area
                 dataKey="implied_apy"
-                stroke="#06b6d4"
-                strokeWidth={2.5}
-                dot={false}
-                name="Implied Fixed APY"
+                name="Implied fixed APY"
+                type="monotone"
+                stroke="var(--chart-fixed)"
+                fill="url(#yield-fill)"
+                strokeWidth={2}
+                dot={points.length === 1}
+                isAnimationActive={false}
               />
               <Line
-                type="monotone"
                 dataKey="underlying_apy"
-                stroke="#10b981"
-                strokeWidth={2}
-                strokeDasharray="4 4"
+                name="Staking benchmark"
+                type="monotone"
+                stroke="var(--yield)"
+                strokeDasharray="4 5"
                 dot={false}
-                name="Underlying APY"
+                strokeWidth={1.5}
+                isAnimationActive={false}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
-    </div>
+      <div className="chart-footer">
+        <span>*Backend benchmark, not a measured staking return.</span>
+        <span
+          title={
+            data.length
+              ? `Last indexed: ${new Date(data[data.length - 1].recorded_at).toLocaleString()}`
+              : undefined
+          }
+        >
+          {data.length ? `${data.length} indexed snapshots` : 'Exodus indexer'}
+        </span>
+      </div>
+    </section>
   );
-};
+}

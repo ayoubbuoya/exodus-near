@@ -1,0 +1,42 @@
+/* Shared Glacier dark palette. */
+:root {
+  --bg: #080c14;
+  --panel: #111a28;
+  --sidebar: #0b1019;
+  --control: #ffffff08;
+  --control-strong: #263348;
+  --hover: #ffffff10;
+  --wash: #ffffff03;
+  --field: #090f19b3;
+  --text: #f0f3fa;
+  --muted: #b0bdd0;
+  --faint: #9aaac2;
+  --line: #ffffff17;
+  --line-strong: #ffffff2b;
+  --yield: #8db4ff;
+  --silver: #e3e9f2;
+  --primary-text: #101622;
+  --primary-hover: #ffffff;
+  --button-inset: #18202e;
+  --heading-highlight: #f6f8ff;
+  --heading-low: #b1bfd4;
+  --glass-start: #19263bb3;
+  --glass-end: #101722eb;
+  --yield-start: #234a7c3d;
+  --yield-end: #101a2c;
+  --ambient: #2f548c1c;
+  --overlay: #030812b8;
+  --shadow: #00000050;
+  --chart-fixed: #d0daeb;
+  --chart-grid: #ffffff14;
+  --chart-axis: #a0b0c8;
+  --danger: #f4b3ab;
+  --danger-bg: #f0b2ad0d;
+  --danger-border: #f0b2ad4d;
+  --warning: #efd09c;
+  --warning-bg: #e7c8950d;
+  --warning-border: #e7c89540;
+  --success: #a2d9b6;
+  --success-bg: #a2d9b617;
+  --success-border: #a2d9b64d;
+}

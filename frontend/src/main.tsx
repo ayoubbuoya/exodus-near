@@ -1,16 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
-import { WalletProvider } from './context/WalletContext';
-import { MarketProvider } from './context/MarketContext';
 import './index.css';
+import './styles/readability.css';
+import './styles/theme.css';
+import './styles/application.css';
+import './styles/experience.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <WalletProvider>
-      <MarketProvider>
-        <App />
-      </MarketProvider>
-    </WalletProvider>
-  </React.StrictMode>
+    <App />
+  </React.StrictMode>,
 );

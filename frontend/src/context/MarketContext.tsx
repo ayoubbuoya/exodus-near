@@ -1,7 +1,20 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
 import { APP_CONFIG, type MarketConfig } from '../config';
 import type { MarketView, PoolView, UserPositionView } from '../types';
-import { fetchFtBalance, fetchMarketView, fetchPoolView, fetchUserPosition } from '../lib/rpc';
+import {
+  fetchFtBalance,
+  fetchMarketView,
+  fetchPoolView,
+  fetchUserPosition,
+} from '../lib/rpc';
 import { useWallet } from './WalletContext';
 
 interface MarketContextType {
@@ -11,79 +24,86 @@ interface MarketContextType {
   poolData: PoolView | null;
   userPosition: UserPositionView | null;
   lstBalance: string;
+  balancesReady: boolean;
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
 }
-
 const MarketContext = createContext<MarketContextType | null>(null);
+interface Snapshot {
+  key: string;
+  market: MarketView | null;
+  pool: PoolView | null;
+  user: UserPositionView | null;
+  lst: string;
+  balancesReady: boolean;
+}
 
-export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [selectedMarket, setSelectedMarket] = useState<MarketConfig>(APP_CONFIG.markets[0]);
-  const [marketData, setMarketData] = useState<MarketView | null>(null);
-  const [poolData, setPoolData] = useState<PoolView | null>(null);
-  const [userPosition, setUserPosition] = useState<UserPositionView | null>(null);
-  const [lstBalance, setLstBalance] = useState<string>('0');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
+export function MarketProvider({ children }: { children: ReactNode }) {
+  const [selectedMarket, setSelectedMarket] = useState<MarketConfig>(
+    APP_CONFIG.markets[0],
+  );
   const { accountId } = useWallet();
-
+  const key = `${selectedMarket.id}:${accountId || ''}`;
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [isLoading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const version = useRef(0);
   const refresh = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // 1. Fetch Market & Pool views in parallel
-      const [mView, pView] = await Promise.all([
-        fetchMarketView(selectedMarket.marketContractId).catch((err) => {
-          console.warn('Market view fetch failed:', err);
-          return null;
-        }),
-        fetchPoolView(selectedMarket.marketContractId).catch((err) => {
-          console.warn('Pool view fetch failed:', err);
-          return null;
-        }),
-      ]);
-
-      setMarketData(mView);
-      setPoolData(pView);
-
-      // 2. Fetch User balances if wallet is connected
-      if (accountId) {
-        const [uPos, ftBal] = await Promise.all([
-          fetchUserPosition(selectedMarket.marketContractId, accountId).catch(() => null),
-          fetchFtBalance(selectedMarket.lstContractId, accountId).catch(() => '0'),
-        ]);
-        setUserPosition(uPos);
-        setLstBalance(ftBal);
-      } else {
-        setUserPosition(null);
-        setLstBalance('0');
-      }
-    } catch (err: any) {
-      console.error('Error refreshing market state:', err);
-      setError(err?.message || 'Failed to load market state');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedMarket, accountId]);
-
+    const request = ++version.current;
+    setLoading(true);
+    const [market, pool, user, balance] = await Promise.allSettled([
+      fetchMarketView(selectedMarket.marketContractId),
+      fetchPoolView(selectedMarket.marketContractId),
+      accountId
+        ? fetchUserPosition(selectedMarket.marketContractId, accountId)
+        : Promise.resolve(null),
+      accountId
+        ? fetchFtBalance(selectedMarket.lstContractId, accountId)
+        : Promise.resolve('0'),
+    ]);
+    if (request !== version.current) return;
+    const balancesReady =
+      !!accountId &&
+      user.status === 'fulfilled' &&
+      balance.status === 'fulfilled';
+    setSnapshot({
+      key,
+      market: market.status === 'fulfilled' ? market.value : null,
+      pool: pool.status === 'fulfilled' ? pool.value : null,
+      user: user.status === 'fulfilled' ? user.value : null,
+      lst: balance.status === 'fulfilled' ? balance.value : '0',
+      balancesReady,
+    });
+    setError(
+      market.status === 'rejected' || pool.status === 'rejected'
+        ? 'Market data could not be fully loaded. Check your connection and retry.'
+        : accountId && !balancesReady
+          ? 'Wallet balances could not be loaded. Refresh before entering a new position.'
+          : null,
+    );
+    setLoading(false);
+  }, [selectedMarket, accountId, key]);
   useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 15000); // Auto-refresh every 15s
-    return () => clearInterval(interval);
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 15000);
+    return () => {
+      version.current++;
+      window.clearInterval(interval);
+    };
   }, [refresh]);
-
+  const current = snapshot?.key === key ? snapshot : null;
   return (
     <MarketContext.Provider
       value={{
         selectedMarket,
         setSelectedMarket,
-        marketData,
-        poolData,
-        userPosition,
-        lstBalance,
-        isLoading,
+        marketData: current?.market || null,
+        poolData: current?.pool || null,
+        userPosition: current?.user || null,
+        lstBalance: current?.lst || '0',
+        balancesReady: current?.balancesReady || false,
+        isLoading: isLoading || !current,
         error,
         refresh,
       }}
@@ -91,12 +111,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       {children}
     </MarketContext.Provider>
   );
-};
-
-export const useMarket = () => {
-  const ctx = useContext(MarketContext);
-  if (!ctx) {
-    throw new Error('useMarket must be used within a MarketProvider');
-  }
-  return ctx;
-};
+}
+export function useMarket() {
+  const value = useContext(MarketContext);
+  if (!value) throw new Error('useMarket requires MarketProvider');
+  return value;
+}

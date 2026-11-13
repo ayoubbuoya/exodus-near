@@ -1,0 +1,472 @@
+/* The app follows the original Exodus Glacier design system.
+   Scoped here so the landing page keeps its own presentation styles. */
+.application {
+  --app-sidebar-width: 232px;
+  --app-gutter: 32px;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --bg: #060a13;
+  --panel: #0b1220;
+  --text: #e6ecf5;
+  --silver: #e6ecf5;
+  --muted: #9aa8bf;
+  --faint: #8493ac;
+  --yield: #4d8dff;
+  --line: #ffffff12;
+  --line-strong: #ffffff24;
+  --field: #ffffff04;
+  --control: #ffffff08;
+  --hover: #ffffff0d;
+  --primary-text: #060a13;
+  --glass-fill: rgb(255 255 255 / 0.045);
+  --glass-rim: linear-gradient(145deg, #ffffff50, #ffffff14 30%, #ffffff08 62%, #ffffff29);
+  --glass-shadow: 0 30px 70px -30px #000000bf;
+  --glass-sheen: #ffffff09;
+  --ambient-a: rgb(190 205 235 / 0.07);
+  --ambient-b: rgb(45 80 170 / 0.13);
+  --ambient-c: transparent;
+  --chart-fixed: #e6ecf5;
+  --chart-axis: #8493ac;
+  --chart-grid: #ffffff0d;
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  min-height: 100svh;
+}
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.app-backdrop i { position: absolute; border-radius: 50%; }
+.app-backdrop i:nth-child(1) {
+  inset: -25% auto auto -15%; width: 60%; height: 75%;
+  background: radial-gradient(closest-side, var(--ambient-a), transparent);
+}
+.app-backdrop i:nth-child(2) {
+  inset: auto -15% -30% auto; width: 65%; height: 80%;
+  background: radial-gradient(closest-side, var(--ambient-b), transparent);
+}
+.app-backdrop i:nth-child(3) {
+  inset: 5% auto auto 25%; width: 50%; height: 60%;
+  background: radial-gradient(closest-side, var(--ambient-c), transparent);
+}
+.application :is(.app-glass, .app-sidebar, .trade-panel, .market-stats > :where(div),
+  .chart-panel, .pool-story, .tokenize-story, .intents-story, .position-card,
+  .claim-panel, .portfolio-empty) {
+  position: relative;
+  isolation: isolate;
+  background: radial-gradient(70% 55% at 0 0, var(--glass-sheen), transparent 70%), var(--glass-fill);
+  border: 0;
+  border-radius: 24px;
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(24px) saturate(170%);
+}
+.application :is(.app-glass, .app-sidebar, .trade-panel, .market-stats > :where(div),
+  .chart-panel, .pool-story, .tokenize-story, .intents-story, .position-card,
+  .claim-panel, .portfolio-empty)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--glass-rim);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.application .eyebrow {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+.application :is(.button, .text-link, .help-button, .action-button) { font-weight: 500; }
+.application .button { border-radius: 12px; }
+.application .button-small { min-height: 40px; }
+.application .icon-button { border-radius: 12px; }
+.application .app-sidebar {
+  position: fixed;
+  inset: 12px auto 12px 12px;
+  width: var(--app-sidebar-width);
+  padding: 22px 12px 14px;
+  overflow: hidden;
+  min-height: 0;
+}
+.application .app-sidebar > .brand { margin: 0 10px 28px; flex-shrink: 0; }
+.application .brand > span { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.04em; }
+.application .sidebar-section-label { margin: 0 12px 12px; color: var(--faint); flex-shrink: 0; }
+.application .app-sidebar nav {
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  flex-shrink: 1;
+}
+.application .sidebar-link {
+  border: 0;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 450;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.application .sidebar-link.active { background: #ffffff0d; color: var(--text); box-shadow: inset 0 1px 0 #ffffff0a; }
+.application .sidebar-link.active::after { display: none; }
+.application .sidebar-link.active svg { stroke-width: 2; }
+.application .sidebar-new { display: block; font-size: 12px; border: 0; color: var(--faint); padding: 0; }
+.application .sidebar-bottom { margin-top: auto; padding-top: 24px; flex-shrink: 0; }
+.application .tour-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 10px;
+  background: var(--control);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  margin-bottom: 12px;
+}
+.application .tour-card > svg { flex-shrink: 0; color: var(--muted); }
+.application .tour-card > svg:last-child { margin-left: auto; }
+.application .tour-card strong { font-size: 13px; font-weight: 500; margin: 0 0 5px; }
+.application .tour-card > span > span { display: block; color: var(--faint); font-size: 12px; }
+.application .sidebar-resource { padding: 9px 12px; font-size: 13px; }
+.application .sidebar-footer { margin: 14px 10px 0; padding-top: 14px; line-height: 1.6; }
+.application .app-workspace { margin-left: calc(var(--app-sidebar-width) + 24px); min-width: 0; }
+.application .app-topbar {
+  width: 100%; max-width: 1240px; margin: auto;
+  padding: 16px var(--app-gutter) 0; min-height: 56px;
+  border: 0; background: transparent;
+}
+.application .app-breadcrumb { font-size: 12px; gap: 10px; }
+.application .app-breadcrumb strong { font-weight: 400; }
+.application .app-topbar-actions { gap: 8px; }
+.network-label-short { display: none; }
+.application .wallet-account { font-size: 12px; }
+.application .app-main {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+  max-width: 1240px;
+  padding: 28px var(--app-gutter) 24px;
+}
+.application .app-main > * { min-width: 0; }
+.application .workspace-title { align-items: flex-end; gap: 20px; margin: 0; }
+.application .workspace-title > div { min-width: 0; }
+.application .workspace-title h1 { font-size: 32px; font-weight: 500; letter-spacing: -0.035em; line-height: 1.15; margin: 8px 0; }
+.application .title-dot { display: none; }
+.application .workspace-title p { max-width: 600px; font-size: 14px; font-weight: 400; line-height: 1.7; }
+.application .help-button { border: 1px solid var(--line-strong); border-radius: 12px; font-size: 13px; padding: 10px 12px; }
+.application .market-overview { min-width: 0; }
+.application .market-toolbar { padding: 0; border: 0; gap: 16px; }
+.application .market-select-group { gap: 12px; min-width: 0; }
+.application .market-select-group .asset-avatar { width: 40px; height: 40px; border-radius: 12px; background: var(--hover); border: 1px solid var(--line-strong); flex-shrink: 0; }
+.application .market-select-group > div { min-width: 0; }
+.application .asset-avatar svg { width: 25px; }
+.application .market-select-group .eyebrow { color: var(--faint); }
+.application .market-select-wrap select { font-size: 16px; font-weight: 500; padding-top: 4px; letter-spacing: -0.02em; }
+.application .market-select-wrap option { color: var(--text); background: var(--panel); }
+.application .badge { background: var(--control); border-color: var(--line-strong); border-radius: 8px; font-weight: 400; }
+.application .demo-notice { background: var(--control); border: 0; border-radius: 12px; font-size: 13px; line-height: 1.65; padding: 10px 14px; margin-top: 16px; }
+.application .demo-notice-label { border: 0; padding: 0 10px 0 0; border-right: 1px solid var(--line-strong); border-radius: 0; }
+.application .data-notice { border-radius: 12px; }
+.application .market-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 0; margin-top: 20px; }
+.application .market-stats > div { padding: 18px; gap: 10px; border-radius: 18px; }
+.application .market-stats .eyebrow { display: flex; align-items: center; gap: 8px; color: var(--faint); font-size: 12px; }
+.application .market-stats .eyebrow svg { flex-shrink: 0; }
+.application .market-stats strong { font-family: var(--font-sans); font-size: clamp(23px, 2vw, 30px); font-weight: 500; letter-spacing: -0.035em; }
+.application .market-stats strong.stat-date { font-size: clamp(18px, 1.6vw, 23px); margin-top: 2px; font-weight: 500; }
+.application .market-stats > div > span:last-child { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.application .market-action-nav {
+  display: flex; gap: 4px; width: fit-content; max-width: 100%; padding: 5px;
+  margin: 0; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--control); overflow-x: auto;
+}
+.application .market-action-nav a { display: flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 38px; padding: 8px 14px; color: var(--muted); border-radius: 10px; font-size: 13px; }
+.application .market-action-nav a[aria-current] { color: var(--text); background: var(--hover); box-shadow: inset 0 1px 0 var(--line-strong); }
+.application .market-action-nav a:hover { color: var(--text); }
+.application .market-action-nav a > span { color: var(--faint); font-size: 12px; }
+.application .trade-layout { grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.application .trade-primary { order: 0; min-width: 0; }
+.application .market-insights { order: 0; gap: 20px; }
+.application .trade-panel { padding: 24px; border-radius: 20px; }
+.application .panel-heading { gap: 12px; margin-bottom: 24px; }
+.application .panel-heading .token-symbol { width: 38px; height: 38px; border-radius: 12px; font-weight: 500; font-size: 12px; }
+.application .pt-symbol { background: var(--hover); border: 1px solid var(--line-strong); color: var(--text); box-shadow: none; }
+.application .yt-symbol { background: color-mix(in srgb, var(--yield) 12%, transparent); border: 1px solid color-mix(in srgb, var(--yield) 25%, transparent); }
+.application .panel-heading h2 { font-size: 20px; font-weight: 500; letter-spacing: -0.03em; }
+.application .panel-heading p { font-size: 13px; font-weight: 400; }
+.application .segmented { background: var(--control); border: 0; border-radius: 12px; padding: 4px; }
+.application .segmented button { min-height: 38px; font-size: 14px; font-weight: 500; border: 0; border-radius: 9px; }
+.application .segmented .selected { background: var(--hover); box-shadow: inset 0 1px 0 var(--line-strong), 0 2px 5px #0000000a; }
+.application :is(.amount-field, .trade-output, .mint-output) { border-radius: 16px; background: var(--field); padding: 18px; border: 1px solid var(--line); }
+.application .amount-field:focus-within { border-color: var(--line-strong); background: var(--control); }
+.application .amount-label { font-size: 13px; margin-bottom: 18px; }
+.application :is(.amount-input-row input, .trade-output strong, .intent-amount input, .mint-output > strong) { font-family: var(--font-sans); font-size: 34px; font-weight: 400; letter-spacing: -0.04em; }
+.application .amount-token { padding: 6px 9px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; font-weight: 500; background: var(--control); }
+.application .mini-token { width: 22px; height: 22px; font-size: 12px; }
+.application .trade-output > span { font-size: 13px; }
+.application .trade-output > div > span { font-size: 14px; font-weight: 500; }
+.application .swap-divider { width: 30px; height: 30px; border-radius: 10px; border-color: var(--panel); background: var(--panel); outline: 1px solid var(--line); }
+.application .trade-summary { gap: 14px; margin-block: 24px; }
+.application .summary-row { font-size: 13px; gap: 12px; }
+.application .summary-row > span:last-child { font-family: var(--font-sans); font-size: 13px; font-weight: 500; }
+.application .trade-settings summary { font-size: 13px; gap: 12px; line-height: 1.65; }
+.application .trade-settings summary > span { flex-wrap: wrap; justify-content: flex-end; }
+.application .action-button { min-height: 48px; font-size: 14px; border-radius: 12px; justify-content: center; gap: 12px; font-weight: 500; }
+.application .action-button:disabled { opacity: 0.42; }
+.application .panel-footnote { font-size: 12px; font-weight: 400; line-height: 1.65; }
+.application .form-notice { border-radius: 12px; font-size: 13px; line-height: 1.7; }
+.application .market-position { padding: 24px; }
+.position-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.position-heading h2 { margin: 0; font-size: 18px; font-weight: 500; letter-spacing: -0.03em; }
+.position-heading > svg { color: var(--faint); }
+.position-market { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+.position-balances { display: grid; gap: 18px; padding-block: 24px; }
+.position-unit { color: var(--faint); }
+.position-accrued { border-top: 1px solid var(--line); padding-block: 20px; display: grid; gap: 10px; }
+.position-accrued > span { font-size: 13px; color: var(--muted); }
+.position-accrued strong { font-size: 27px; font-weight: 400; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+.position-accrued small { font-size: 13px; font-weight: 400; }
+.position-connect-note { color: var(--muted); font-size: 13px; margin: 0 0 16px; line-height: 1.65; }
+.market-position > .button { width: 100%; justify-content: center; }
+.application .insight-note { padding: 2px 4px; gap: 10px; }
+.application .insight-note .token-symbol { display: none; }
+.application .insight-note h2 { font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+.application .insight-note p { font-size: 13px; font-weight: 400; line-height: 1.8; }
+.application .insight-note div > span { line-height: 1.7; }
+.application .app-main > .chart-panel { margin-top: 0; }
+.application .chart-panel { padding: 24px; }
+.application .chart-header h2 { font-size: 19px; font-weight: 500; }
+.application .chart-header .eyebrow { font-size: 12px; }
+.application .chart-legend { margin-top: 22px; }
+.application .yield-chart { height: 230px; }
+.application .chart-ranges { background: var(--control); border-radius: 10px; padding: 3px; }
+.application .chart-ranges button { min-height: 30px; border-radius: 7px; font-weight: 400; }
+.application .chart-footer { line-height: 1.6; }
+.application .market-tools { border: 1px solid var(--line); border-radius: 16px; padding: 18px 22px; margin-top: 0; background: var(--control); }
+.application .workspace-panel > .market-tools { margin-top: 24px; }
+.application .market-tools .eyebrow { font-size: 12px; }
+.application .market-tools p { font-size: 13px; font-weight: 400; line-height: 1.7; max-width: 500px; }
+.application .tool-buttons .button-small { min-height: 38px; border-radius: 10px; }
+.application .workspace-panel { margin-top: 0; }
+.application :is(.tokenize-layout, .pool-layout, .intents-layout) { grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; }
+.application :is(.tokenize-layout, .pool-layout, .intents-layout) > .trade-panel { grid-column: 1; grid-row: 1; }
+.application :is(.tokenize-story, .pool-story, .intents-story) { grid-column: 2; grid-row: 1; padding: 24px; }
+.application .intents-layout { width: 100%; max-width: 960px; margin-inline: auto; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; }
+.application :is(.tokenize-story, .pool-story, .intents-story) h2 { font-size: 22px; font-weight: 500; margin-top: 12px; letter-spacing: -0.03em; }
+.application :is(.tokenize-story, .pool-story, .intents-story) > p { font-size: 13px; font-weight: 400; line-height: 1.8; }
+.application .tokenize-story .instrument { max-width: 230px; margin-block: 10px; }
+.application .tokenize-explainer { gap: 18px; padding-block: 20px; }
+.application .tokenize-explainer .summary-row { display: grid; gap: 6px; }
+.application .tokenize-explainer .summary-row > span:last-child { justify-content: start; text-align: left; margin-left: 0; }
+.application .tokenize-portfolio { grid-column: 1; margin: -6px 0 0; justify-self: start; font-size: 13px; }
+.application .pool-story .trade-summary { border-block: 1px solid var(--line); padding-block: 20px; margin-top: 20px; }
+.application .pool-story > .text-link { font-size: 13px; line-height: 1.7; }
+.application .mint-split-values b { font-family: var(--font-sans); font-size: 30px; font-weight: 400; }
+.application .mint-output > strong small { font-size: 14px; }
+.application .route-story { padding: 15px 0; gap: 7px; flex-wrap: wrap; font-size: 12px; }
+.application .intent-step { gap: 12px; }
+.application .intent-step h3 { font-size: 14px; font-weight: 500; }
+.application .intent-step p { font-size: 13px; font-weight: 400; line-height: 1.7; }
+.application .intents-story > .text-link { font-size: 13px; }
+.application .intents-fields select { background: var(--field); border-radius: 12px; font-size: 14px; font-weight: 400; }
+.application .intent-amount { display: block; border-radius: 14px; background: var(--field); }
+.application .intent-amount > .field-label { margin-bottom: 12px; }
+.application .intent-amount .amount-token { flex-shrink: 0; }
+.application .intents-fields { min-width: 0; }
+.application .intents-fields select { margin-bottom: 20px; padding: 12px 14px; }
+.application .intents-layout .panel-heading { align-items: flex-start; gap: 10px; }
+.application .route-preview-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  background: var(--control);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.application .intents-story { background: transparent; box-shadow: none; backdrop-filter: none; padding: 16px 0 16px 8px; }
+.application .intents-story::before { display: none; }
+.application .intents-story > p { margin: 14px 0 22px; }
+.application .route-story {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 18px 0;
+  margin-bottom: 24px;
+}
+.application .route-endpoint { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.application .route-endpoint > span:last-child { display: grid; gap: 4px; }
+.application .route-endpoint strong { font-size: 13px; font-weight: 500; color: var(--text); }
+.application .route-endpoint small { font-size: 12px; color: var(--muted); }
+.application .route-chain-icon { width: 36px; height: 36px; justify-content: center; flex-shrink: 0; border-radius: 12px; background: var(--control); border: 1px solid var(--line); }
+.application .route-chain-icon > svg { width: 20px; height: 20px; }
+.application .route-connector { flex: 1; justify-content: center; color: var(--faint); }
+.application .intent-step { margin-bottom: 20px; }
+.application .intent-step > span { display: grid; place-items: center; width: 24px; height: 24px; margin: 0; border: 1px solid var(--line); border-radius: 8px; flex-shrink: 0; font-size: 12px; }
+.application .portfolio-account { padding-block: 0 20px; margin-bottom: 0; }
+.application .portfolio-account > span { font-size: 12px; font-weight: 500; letter-spacing: 0.04em; }
+.application .claim-panel { padding: 28px; background: linear-gradient(120deg, color-mix(in srgb, var(--yield) 7%, transparent), transparent), var(--glass-fill); }
+.application .claim-panel h2 { font-size: 24px; font-weight: 500; letter-spacing: -0.035em; }
+.application .claim-panel p { font-size: 14px; font-weight: 400; }
+.application .claim-value strong { font-family: var(--font-sans); font-size: 34px; font-weight: 500; letter-spacing: -0.035em; }
+.application .position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.application .position-card { padding: 24px; }
+.application .position-top { font-size: 14px; font-weight: 400; }
+.application .position-top .token-symbol { border-radius: 12px; }
+.application .position-card > strong { font-family: var(--font-sans); font-size: 34px; font-weight: 500; letter-spacing: -0.035em; }
+.application .position-card p { font-size: 13px; font-weight: 400; min-height: 0; }
+.application .position-card > button { font-size: 13px; }
+.application .portfolio-next { padding: 22px 0; }
+.application .portfolio-next h3 { font-size: 17px; font-weight: 500; }
+.application .portfolio-next p { font-size: 13px; }
+.application .portfolio-empty { margin-top: 0; padding: 40px 24px; }
+.application .portfolio-empty-art { height: 160px; }
+.application .portfolio-empty-art img { width: 300px; }
+.application .portfolio-empty h2 { font-size: 32px; font-weight: 500; letter-spacing: -0.035em; }
+.application .portfolio-empty p { font-size: 14px; font-weight: 400; max-width: 440px; }
+.application .app-footer { padding-top: 20px; margin-top: 0; font-size: 12px; line-height: 1.7; }
+.application .protocol-dialog { font-family: var(--font-sans); }
+
+@media (min-width: 1600px) {
+  .application .trade-layout,
+  .application :is(.tokenize-layout, .pool-layout, .intents-layout) { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+@media (max-width: 1200px) {
+  .application { --app-gutter: 24px; }
+  .application .trade-layout,
+  .application :is(.tokenize-layout, .pool-layout, .intents-layout) { grid-template-columns: minmax(0, 1fr) 285px; gap: 20px; }
+  .application .market-stats > div { padding: 18px 16px; }
+  .application .market-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) and (max-height: 780px) {
+  .application .app-sidebar { padding-top: 18px; }
+  .application .app-sidebar > .brand { margin-bottom: 24px; }
+  .application .sidebar-section-label { display: none; }
+  .application .sidebar-link { padding-block: 9px; min-height: 40px; }
+  .application .sidebar-bottom { padding-top: 16px; }
+  .application .tour-card { padding: 12px 10px; margin-bottom: 8px; }
+  .application .tour-card strong { margin: 0; }
+  .application .tour-card > span > span { display: none; }
+  .application .sidebar-resource { padding-block: 8px; }
+  .application .sidebar-footer { margin-top: 10px; padding-top: 12px; }
+  .application .app-main { padding-top: 22px; gap: 20px; }
+}
+@media (min-width: 1024px) and (max-width: 1120px) {
+  .application .trade-layout,
+  .application :is(.tokenize-layout, .pool-layout, .intents-layout) { grid-template-columns: minmax(0, 1fr); }
+  .application .market-insights { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .application :is(.tokenize-story, .pool-story, .intents-story) { grid-column: 1; grid-row: 2; }
+  .application .tokenize-portfolio { grid-row: 3; }
+}
+@media (max-width: 1023px) {
+  .application .app-sidebar { display: none; }
+  .application .app-workspace { margin-left: 0; }
+  .application .mobile-app-header {
+    display: flex; position: sticky; inset: 12px 12px auto; z-index: 50;
+    height: 58px; width: calc(100% - 24px); margin: 12px 12px 0;
+    padding: 0 12px 0 20px; justify-content: space-between; align-items: center;
+    border: 1px solid var(--line-strong); border-radius: 30px;
+    background: var(--panel); box-shadow: var(--glass-shadow);
+  }
+  .application .mobile-app-header .brand > svg { width: 27px; }
+  .application .mobile-app-header .brand > span { font-size: 23px; }
+  .application .mobile-app-header .brand-network { display: none; }
+  .application .app-sidebar.sidebar-open {
+    display: flex; inset: 80px 12px auto; width: calc(100% - 24px);
+    max-height: calc(100svh - 92px); padding: 20px 12px;
+    background: var(--panel); z-index: 45; overflow-y: auto;
+  }
+  .application .app-sidebar > .brand { display: none; }
+  .application .app-sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .application .sidebar-bottom { padding-top: 16px; margin-top: 0; }
+  .application .tour-card { display: flex; padding: 12px; }
+  .application .app-sidebar nav { flex-shrink: 0; }
+  .application .app-topbar { min-height: 62px; padding-top: 16px; }
+  .application .app-breadcrumb { display: flex; }
+  .application .app-main { padding-top: 24px; }
+  .application .market-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .application .app-main { padding: 20px 16px 16px; gap: 20px; }
+  .application .app-topbar { padding-inline: 16px; }
+  .application .app-breadcrumb { display: none; }
+  .application .app-topbar-actions { flex-wrap: wrap; gap: 5px; }
+  .application .app-topbar .badge { font-size: 12px; padding-inline: 6px; }
+  .application .app-topbar .button-small { padding-inline: 12px; font-size: 13px; }
+  .application .workspace-title { gap: 12px; align-items: flex-start; margin-bottom: 0; }
+  .application .workspace-title h1 { font-size: 28px; }
+  .application .workspace-title p { font-size: 14px; }
+  .application .help-button { font-size: 12px; padding: 8px; gap: 5px; }
+  .application .market-select-wrap select { font-size: 15px; }
+  .application .market-toolbar { gap: 14px; }
+  .application .market-toolbar-actions { margin-left: 0; }
+  .application .market-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0; margin-top: 16px; }
+  .application .market-stats > div { border-radius: 20px; padding: 18px 14px; gap: 10px; }
+  .application .market-stats strong { font-size: 26px; }
+  .application .market-stats strong.stat-date { font-size: 19px; }
+  .application .market-stats .eyebrow { gap: 6px; }
+  .application .market-action-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; margin-bottom: 0; overflow: visible; }
+  .application .market-action-nav a { padding: 9px 10px; font-size: 13px; }
+  .application .market-action-nav a > span { display: none; }
+  .application .trade-layout,
+  .application :is(.tokenize-layout, .pool-layout, .intents-layout) { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .application :is(.tokenize-story, .pool-story, .intents-story) { grid-column: 1; grid-row: 2; padding: 22px; }
+  .application .intents-story { padding: 8px 4px; }
+  .application .tokenize-portfolio { grid-row: 3; }
+  .application .trade-panel { padding: 22px 18px; }
+  .application .market-position { padding: 22px; }
+  .application .panel-heading h2 { font-size: 19px; }
+  .application .amount-input-row input,
+  .application .trade-output strong,
+  .application .intent-amount input { font-size: 30px; }
+  .application .amount-token { font-size: 13px; padding: 5px 7px; }
+  .application :is(.amount-field, .trade-output, .mint-output) { padding: 15px; }
+  .application .trade-settings summary { flex-wrap: wrap; }
+  .application .chart-panel { padding: 20px 16px; }
+  .application .yield-chart { height: 210px; }
+  .application .market-tools { padding: 20px; }
+  .application .claim-panel { padding: 24px; }
+  .application .position-grid { gap: 14px; }
+  .application .position-card { padding: 20px; }
+  .application .claim-panel h2 { font-size: 22px; }
+  .application .position-top { flex-wrap: wrap; }
+  .application .position-card > strong { font-size: 30px; }
+  .application .portfolio-empty-art { height: 140px; }
+  .application .portfolio-empty h2 { font-size: 28px; }
+  .application .app-footer { margin-top: 0; gap: 12px; flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .application .app-topbar-actions { flex-wrap: nowrap; width: 100%; justify-content: flex-end; gap: 6px; }
+  .application .app-topbar .network-label { display: none; }
+  .application .app-topbar .network-label-short { display: inline; }
+  .application .app-topbar .badge { gap: 5px; padding: 5px 6px; white-space: nowrap; }
+  .application .wallet-connected { gap: 4px; }
+  .application .wallet-account { gap: 6px; padding: 9px 8px; white-space: nowrap; font-size: 12px; }
+  .application .wallet-account .account-dot { display: none; }
+  .application .wallet-connected .icon-button { min-width: 34px; min-height: 36px; width: 34px; }
+  .application .intents-layout .panel-heading { align-items: flex-start; flex-wrap: nowrap; }
+  .application .intents-layout .panel-heading > .token-symbol { display: none; }
+  .application .intents-layout .panel-heading > div { min-width: 0; }
+  .application .route-preview-badge { margin-left: auto; padding-inline: 6px; }
+  .application .workspace-title { flex-wrap: wrap; }
+  .application .help-button { min-height: 36px; }
+  .application .position-grid { grid-template-columns: minmax(0, 1fr); }
+  .application .app-sidebar nav { grid-template-columns: minmax(0, 1fr); }
+  .application .market-stats .eyebrow svg { display: none; }
+  .application .market-stats small { font-size: 12px; }
+  .application .market-stats strong.stat-date { font-size: 18px; }
+  .application .three-segments button { font-size: 13px; }
+}

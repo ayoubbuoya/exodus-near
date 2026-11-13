@@ -1,0 +1,581 @@
+/* Product text stays readable at every breakpoint. Mono is reserved for codes. */
+.skip-link {
+  background: var(--silver);
+  color: var(--primary-text);
+}
+.launch-label-short {
+  display: none;
+}
+.landing h1,
+.landing h2,
+.workspace-title h1,
+.tokenize-story h2,
+.pool-story h2,
+.intents-story h2,
+.portfolio-empty h2,
+.dialog-content h2 {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+}
+.landing p,
+.section-heading > p,
+.split-copy > p,
+.split-legend p,
+.strategy-content p,
+.intent-feature p,
+.faq-list details p,
+.portfolio-empty p,
+.workspace-title p,
+.insight-note p,
+.market-tools p,
+.tokenize-story > p,
+.pool-story > p,
+.intents-story > p,
+.intent-step p,
+.dialog-content > p {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.75;
+}
+.hero-copy > p {
+  font-size: 18px;
+}
+.eyebrow {
+  letter-spacing: 0.07em;
+  font-weight: 650;
+}
+.hero-proof,
+.section-aside,
+.strategy-footnote,
+.panel-footnote,
+.demo-caption,
+.closing-note,
+.footer-bottom,
+.app-footer {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.brand > span {
+  font-weight: 700;
+}
+.desktop-links {
+  font-size: 15px;
+  font-weight: 600;
+  gap: 25px;
+}
+.button,
+.button-small,
+.text-link,
+.strategy-action,
+.help-button {
+  font-size: 14px;
+  font-weight: 650;
+}
+.button-small {
+  min-height: 42px;
+}
+.icon-button {
+  min-width: 40px;
+  min-height: 40px;
+}
+.app-sidebar {
+  width: 244px;
+  overflow-y: auto;
+}
+.app-workspace {
+  margin-left: 244px;
+}
+.sidebar-link {
+  font-size: 15px;
+  font-weight: 600;
+  padding-block: 14px;
+}
+.sidebar-new {
+  display: none;
+}
+.sidebar-resource {
+  font-size: 14px;
+}
+.sidebar-footer {
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.tour-card strong {
+  font-size: 16px;
+}
+.tour-card > span:last-child {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.market-toolbar {
+  flex-wrap: wrap;
+}
+.market-select-wrap select {
+  font-size: 16px;
+}
+.market-stats .eyebrow {
+  font-size: 12px;
+}
+.market-stats strong,
+.position-card > strong,
+.claim-value strong {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.market-stats strong {
+  font-size: 32px;
+}
+.market-stats strong.stat-date {
+  font-size: 23px;
+  font-weight: 650;
+}
+.market-stats > div > span:last-child {
+  font-size: 13px;
+}
+.market-stats small {
+  font-size: 13px;
+}
+.panel-heading h2,
+.chart-header h2,
+.insight-note h2,
+.intent-step h3 {
+  font-size: 19px;
+  font-weight: 650;
+}
+.panel-heading p,
+.amount-label,
+.field-label,
+.trade-output > span,
+.trade-settings summary,
+.summary-row,
+.summary-row > span:last-child {
+  font-size: 14px;
+}
+.amount-label {
+  flex-wrap: wrap;
+}
+.amount-label > span,
+.amount-label b {
+  font-size: 12px;
+}
+.amount-token,
+.trade-output > div > span {
+  font-size: 15px;
+  font-weight: 650;
+}
+.amount-input-row input,
+.trade-output strong,
+.intent-amount input,
+.mint-output > strong {
+  font: 650 36px/1.2 var(--font-sans);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.segmented button,
+.action-button,
+.intents-fields select {
+  font-size: 15px;
+  font-weight: 650;
+  min-height: 44px;
+}
+.segmented button {
+  padding-inline: 10px;
+}
+.action-button {
+  min-height: 52px;
+}
+.form-notice,
+.field-error,
+.tour-points li {
+  font-size: 14px;
+  line-height: 1.75;
+}
+.chart-legend,
+.chart-footer,
+.chart-ranges button {
+  font-size: 12px;
+}
+.chart-legend,
+.chart-footer {
+  flex-wrap: wrap;
+}
+.chart-ranges button {
+  min-height: 36px;
+  padding-inline: 10px;
+}
+.yield-chart {
+  height: 250px;
+}
+.wallet-account {
+  font: 500 13px var(--font-mono);
+}
+.strategy-content p {
+  min-height: 84px;
+}
+.strategy-card {
+  display: flex;
+  flex-direction: column;
+}
+.strategy-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.strategy-action {
+  margin-top: auto;
+}
+.card-topline .eyebrow {
+  font-size: 12px;
+}
+.strategy-visual,
+.liquidity-visual {
+  flex-shrink: 0;
+}
+.market-table-header {
+  font-size: 12px;
+}
+.market-asset strong {
+  font-size: 17px;
+}
+.market-asset > div > span {
+  font-size: 13px;
+}
+.market-maturity {
+  font-size: 15px;
+}
+.faq-list summary {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.split-control {
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.split-control input {
+  flex: 1;
+  min-width: 80px;
+}
+.instrument-note .eyebrow {
+  font-size: 12px;
+}
+.instrument-note strong {
+  font-size: 17px;
+  font-weight: 650;
+}
+.instrument-caption {
+  font-size: 12px;
+}
+.instrument-hero {
+  aspect-ratio: 1140/1010;
+}
+.note-principal {
+  top: 77%;
+}
+.footer-top > div {
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+.footer-bottom {
+  flex-wrap: wrap;
+}
+.sidebar-section-label,
+.market-select-group .eyebrow {
+  font-size: 12px;
+}
+.app-topbar .badge {
+  font-size: 12px;
+}
+@media (max-width: 1200px) {
+  .trade-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .market-insights {
+    order: 2;
+  }
+  .trade-layout > div:last-child {
+    order: 1;
+  }
+  .tokenize-layout,
+  .pool-layout,
+  .intents-layout {
+    gap: 28px;
+  }
+  .desktop-links {
+    gap: 18px;
+  }
+}
+@media (max-width: 1050px) {
+  .desktop-links {
+    display: none;
+  }
+  .landing-nav .mobile-menu-toggle {
+    display: inline-grid;
+  }
+  .mobile-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    padding: 12px 20px;
+    background: var(--panel);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px var(--shadow);
+  }
+  .mobile-nav a {
+    display: flex;
+    justify-content: space-between;
+    padding: 14px 0;
+    font-size: 15px;
+  }
+  .app-breadcrumb {
+    display: none;
+  }
+  .app-topbar-actions {
+    margin-left: auto;
+  }
+  .tokenize-layout,
+  .pool-layout,
+  .intents-layout {
+    grid-template-columns: 1fr;
+  }
+  .market-stats {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px 0;
+  }
+  .market-stats > div:nth-child(2) {
+    border-right: 0;
+  }
+  .market-stats > div:nth-child(3) {
+    padding-left: 0;
+  }
+  .section-heading {
+    flex-wrap: wrap;
+  }
+  .section-heading > p {
+    max-width: 440px;
+  }
+}
+@media (max-width: 760px) {
+  .app-workspace {
+    margin-left: 0;
+  }
+  .mobile-app-header {
+    height: 76px;
+  }
+  .app-sidebar {
+    width: 100%;
+    inset: 76px 0 0;
+  }
+  .app-sidebar nav {
+    grid-template-columns: 1fr;
+  }
+  .sidebar-link {
+    padding: 14px;
+  }
+  .landing-nav .brand > span {
+    font-size: 22px;
+  }
+  .landing-nav .brand > svg {
+    width: 27px;
+  }
+  .landing-nav .brand {
+    gap: 8px;
+  }
+  .hero-copy h1 {
+    font-size: clamp(51px, 12vw, 78px);
+  }
+  .hero-actions {
+    align-items: start;
+  }
+  .hero-proof {
+    gap: 10px 18px;
+  }
+  .hero-art {
+    margin-top: 25px;
+  }
+  .hero-actions .text-link {
+    font-size: 14px;
+  }
+  .protocol-strip > div {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  .protocol-strip .strip-divider {
+    display: none;
+  }
+  .strategy-card {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .strategy-visual,
+  .liquidity-visual {
+    height: 190px;
+  }
+  .strategy-content {
+    padding: 20px 24px 26px;
+  }
+  .strategy-content p {
+    min-height: 0;
+    margin-bottom: 25px;
+  }
+  .strategy-content h3 {
+    font-size: 28px;
+  }
+  .strategy-visual img {
+    width: 80%;
+    left: 10%;
+    top: -25%;
+  }
+  .yield-card .strategy-visual img {
+    width: 105%;
+    left: -3%;
+    top: -35%;
+  }
+  .market-table-row {
+    grid-template-columns: minmax(0, 1fr) 20px;
+    gap: 14px;
+  }
+  .market-table-row .market-maturity {
+    grid-row: 2;
+    grid-column: 1;
+    padding-left: 54px;
+  }
+  .market-table-row > svg {
+    grid-column: 2;
+    grid-row: 1/3;
+  }
+  .market-bottom {
+    flex-wrap: wrap;
+  }
+  .market-bottom > span {
+    max-width: none;
+    font-size: 13px;
+  }
+  .market-bottom .text-link {
+    font-size: 14px;
+  }
+  .market-toolbar-actions {
+    flex-wrap: wrap;
+  }
+  .app-topbar .badge {
+    display: inline-flex;
+  }
+  .app-topbar-actions {
+    gap: 10px;
+  }
+  .amount-input-row input,
+  .trade-output strong,
+  .intent-amount input {
+    font-size: 32px;
+  }
+  .market-stats strong {
+    font-size: 28px;
+  }
+  .market-stats strong.stat-date {
+    font-size: 21px;
+  }
+  .market-stats > div {
+    gap: 10px;
+  }
+  .summary-row {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .summary-row > span:last-child {
+    margin-left: auto;
+  }
+  .three-segments button {
+    font-size: 14px;
+    padding-inline: 6px;
+  }
+  .mint-split-values {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .position-grid {
+    grid-template-columns: 1fr;
+  }
+  .position-top {
+    font-size: 16px;
+  }
+  .position-card p {
+    min-height: 0;
+    font-size: 14px;
+  }
+  .position-card > button {
+    font-size: 14px;
+  }
+  .chart-header {
+    flex-wrap: wrap;
+  }
+  .chart-footer > span:first-child {
+    max-width: none;
+  }
+  .split-demo-values {
+    gap: 20px;
+  }
+  .split-demo-values strong {
+    font-size: 26px;
+  }
+  .split-demo-values .eyebrow {
+    font-size: 12px;
+  }
+  .instrument-note strong {
+    font-size: 16px;
+  }
+  .instrument-note .eyebrow {
+    font-size: 12px;
+  }
+}
+@media (max-width: 380px) {
+  .landing-nav .button-small {
+    padding-inline: 12px;
+    font-size: 13px;
+    gap: 7px;
+  }
+  .landing-nav .brand > span {
+    font-size: 21px;
+  }
+  .landing-nav .brand > svg {
+    width: 25px;
+  }
+  .landing-nav {
+    padding-inline: 12px;
+  }
+  .hero-copy h1 {
+    font-size: 49px;
+  }
+  .brand-network {
+    display: none;
+  }
+  .claim-panel {
+    grid-template-columns: 1fr;
+  }
+  .claim-panel > .button {
+    justify-self: start;
+  }
+}
+@media (max-width: 480px) {
+  .landing-nav {
+    padding-inline: 12px;
+  }
+  .landing-nav .launch-label {
+    display: none;
+  }
+  .landing-nav .launch-label-short {
+    display: inline;
+  }
+  .landing-nav .button-small {
+    padding-inline: 12px;
+    gap: 7px;
+    font-size: 14px;
+  }
+  .landing-nav .nav-actions {
+    gap: 6px;
+  }
+}

@@ -1,279 +1,280 @@
-import React, { useState } from 'react';
-import { useWallet } from '../context/WalletContext';
+import { useState } from 'react';
+import { ArrowRight, Split } from 'lucide-react';
+import { TokenArtwork, TokenComposition } from '../components/TokenArtwork';
+import {
+  ActionButton,
+  AmountField,
+  FormNotice,
+  SummaryRow,
+} from '../components/ProtocolUI';
 import { useMarket } from '../context/MarketContext';
-import { formatUnits, parseUnits, formatIndex } from '../lib/formatters';
+import { useWallet } from '../context/WalletContext';
+import { useProtocolAction } from '../hooks/useProtocolAction';
+import { formatIndex, formatUnits, safeAmount } from '../lib/formatters';
 import { APP_CONFIG } from '../config';
 import type { TxStatus } from '../types';
-import { Split, Merge, CheckCircle, ShieldCheck } from 'lucide-react';
 
-interface MintRedeemTabProps {
+export function MintRedeemTab({
+  onTxUpdate,
+}: {
   onTxUpdate: (tx: TxStatus) => void;
-}
-
-export const MintRedeemTab: React.FC<MintRedeemTabProps> = ({ onTxUpdate }) => {
+}) {
+  const {
+    selectedMarket,
+    marketData,
+    userPosition,
+    lstBalance,
+    balancesReady,
+    refresh,
+  } = useMarket();
   const { isConnected, connect, executeTransaction } = useWallet();
-  const { selectedMarket, marketData, userPosition, lstBalance, refresh } = useMarket();
-
+  const { busy, run } = useProtocolAction(onTxUpdate);
   const [mode, setMode] = useState<'mint' | 'redeem_py' | 'redeem_pt'>('mint');
-  const [amountInput, setAmountInput] = useState<string>('10');
-
-  const pyIndexNum = marketData?.py_index
-    ? Number(BigInt(marketData.py_index)) / 1e18
-    : 1.0;
-  const pyIndexFormatted = formatIndex(marketData?.py_index);
-
-  // Calculate expected mint output: PT & YT = LST * py_index
-  const expectedMintTokens = (() => {
-    const amt = parseFloat(amountInput);
-    if (isNaN(amt) || amt <= 0) return '0.00';
-    return (amt * pyIndexNum).toFixed(4);
-  })();
-
-  // Calculate expected redeem output: LST = PT / py_index
-  const expectedRedeemLST = (() => {
-    const amt = parseFloat(amountInput);
-    if (isNaN(amt) || amt <= 0 || pyIndexNum <= 0) return '0.00';
-    return (amt / pyIndexNum).toFixed(4);
-  })();
-
-  const handleMax = () => {
-    if (mode === 'mint') {
-      setAmountInput(formatUnits(lstBalance, 4));
-    } else if (mode === 'redeem_py') {
-      // Min of PT and YT balance
-      const pt = BigInt(userPosition?.pt_balance || '0');
-      const yt = BigInt(userPosition?.yt_balance || '0');
-      const min = pt < yt ? pt : yt;
-      setAmountInput(formatUnits(min.toString(), 4));
-    } else {
-      setAmountInput(formatUnits(userPosition?.pt_balance, 4));
-    }
-  };
-
-  const handleAction = async () => {
+  const [amount, setAmount] = useState('');
+  const input = safeAmount(amount);
+  const pt = BigInt(userPosition?.pt_balance || '0');
+  const yt = BigInt(userPosition?.yt_balance || '0');
+  const balance =
+    mode === 'mint'
+      ? BigInt(lstBalance)
+      : mode === 'redeem_py'
+        ? pt < yt
+          ? pt
+          : yt
+        : pt;
+  const index = BigInt(
+    (mode === 'redeem_pt'
+      ? marketData?.index_at_maturity || marketData?.py_index
+      : marketData?.py_index) || '0',
+  );
+  const expected =
+    index > 0n
+      ? mode === 'mint'
+        ? (input * index) / 10n ** 18n
+        : (input * 10n ** 18n) / index
+      : null;
+  const matured =
+    Date.now() >= (marketData?.expiry_ns || selectedMarket.expiryNs) / 1e6;
+  const blocked =
+    mode === 'mint'
+      ? !marketData || marketData.paused || matured
+      : mode === 'redeem_pt' && !matured;
+  const insufficient = balancesReady && input > balance;
+  async function submit() {
     if (!isConnected) {
       await connect();
       return;
     }
-
-    try {
-      const yoctoIn = parseUnits(amountInput);
-
-      if (mode === 'mint') {
-        onTxUpdate({
-          status: 'pending',
-          title: 'Tokenizing LST',
-          message: `Splitting ${amountInput} ${selectedMarket.symbol} into equal PT and YT tokens...`,
-        });
-
-        const msg = JSON.stringify({ action: 'mint_py' });
-
-        const tx = await executeTransaction(
-          selectedMarket.lstContractId,
-          'ft_transfer_call',
-          {
-            receiver_id: selectedMarket.marketContractId,
-            amount: yoctoIn,
-            msg,
-          },
-          '1',
-          APP_CONFIG.gasUnits.swap
-        );
-
-        onTxUpdate({
-          status: 'success',
-          title: 'Mint Complete',
-          message: `Successfully minted ${expectedMintTokens} PT + ${expectedMintTokens} YT.`,
-          txHash: tx?.transaction?.hash,
-        });
-      } else if (mode === 'redeem_py') {
-        onTxUpdate({
-          status: 'pending',
-          title: 'Redeeming PT + YT',
-          message: `Burning equal PT + YT to reclaim ${selectedMarket.symbol}...`,
-        });
-
-        const tx = await executeTransaction(
-          selectedMarket.marketContractId,
-          'redeem_py',
-          { amount: yoctoIn },
-          '1',
-          APP_CONFIG.gasUnits.swap
-        );
-
-        onTxUpdate({
-          status: 'success',
-          title: 'Redeem Complete',
-          message: `Successfully redeemed ${amountInput} PT + YT for ${expectedRedeemLST} ${selectedMarket.symbol}.`,
-          txHash: tx?.transaction?.hash,
-        });
-      } else {
-        // Redeem matured PT post-expiry
-        onTxUpdate({
-          status: 'pending',
-          title: 'Redeeming Matured PT',
-          message: `Redeeming PT at final maturity rate...`,
-        });
-
-        const tx = await executeTransaction(
-          selectedMarket.marketContractId,
-          'redeem_pt',
-          { amount: yoctoIn },
-          '1',
-          APP_CONFIG.gasUnits.swap
-        );
-
-        onTxUpdate({
-          status: 'success',
-          title: 'Matured PT Redeemed',
-          message: `Successfully redeemed ${amountInput} PT for ${selectedMarket.symbol}.`,
-          txHash: tx?.transaction?.hash,
-        });
-      }
-
+    if (
+      input <= 0n ||
+      insufficient ||
+      blocked ||
+      (mode === 'mint' && !balancesReady)
+    )
+      return;
+    await run(mode === 'mint' ? 'Split LST' : 'Redeem tokens', async () => {
+      const tx =
+        mode === 'mint'
+          ? await executeTransaction(
+              selectedMarket.lstContractId,
+              'ft_transfer_call',
+              {
+                receiver_id: selectedMarket.marketContractId,
+                amount: input.toString(),
+                msg: JSON.stringify({ action: 'mint_py' }),
+              },
+              '1',
+              APP_CONFIG.gasUnits.swap,
+            )
+          : await executeTransaction(
+              selectedMarket.marketContractId,
+              mode,
+              { amount: input.toString() },
+              '1',
+              APP_CONFIG.gasUnits.swap,
+            );
       await refresh();
-    } catch (err: any) {
-      console.error('Mint/Redeem error:', err);
-      onTxUpdate({
-        status: 'error',
-        title: 'Action Failed',
-        message: err?.message || 'Transaction could not be completed.',
-      });
-    }
-  };
-
+      return tx;
+    });
+  }
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800">
-        {/* Sub-mode switcher */}
-        <div className="flex p-1 bg-slate-900/90 rounded-2xl mb-6 border border-slate-800">
-          <button
-            onClick={() => setMode('mint')}
-            className={`flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition-all ${
-              mode === 'mint'
-                ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Split className="w-3.5 h-3.5" />
-            <span>Mint (Split LST)</span>
-          </button>
-          <button
-            onClick={() => setMode('redeem_py')}
-            className={`flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition-all ${
-              mode === 'redeem_py'
-                ? 'bg-slate-800 text-slate-100 shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Merge className="w-3.5 h-3.5" />
-            <span>Redeem (PT + YT)</span>
-          </button>
-          <button
-            onClick={() => setMode('redeem_pt')}
-            className={`flex-1 py-2 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center space-x-1.5 transition-all ${
-              mode === 'redeem_pt'
-                ? 'bg-slate-800 text-slate-100 shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <CheckCircle className="w-3.5 h-3.5" />
-            <span>Redeem PT (Matured)</span>
-          </button>
+    <div className="tokenize-layout">
+      <section className="tokenize-story">
+        <span className="eyebrow">PRINCIPAL + YIELD</span>
+        <h2>
+          {mode === 'mint' ? (
+            <>
+              How tokenization works
+            </>
+          ) : (
+            <>
+              Redeeming your tokens
+            </>
+          )}
+        </h2>
+        <TokenComposition variant="split" compact />
+        <div className="tokenize-explainer">
+          <SummaryRow label="PT · Principal">
+            1 NEAR of LST at maturity
+          </SummaryRow>
+          <SummaryRow label="YT · Yield">
+            Staking rewards until maturity
+          </SummaryRow>
         </div>
-
-        {/* Input Card */}
-        <div className="bg-slate-900/70 rounded-2xl p-4 border border-slate-800 mb-6">
-          <div className="flex justify-between items-center text-xs font-semibold text-slate-400 mb-2">
-            <span>
+        <p>
+          {mode === 'mint'
+            ? 'The staking index determines how much PT and YT your LST creates. Both are minted in equal amounts.'
+            : mode === 'redeem_py'
+              ? 'Burn an equal amount of PT and YT to reclaim the underlying LST. Pausing does not block this exit.'
+              : 'After maturity, redeem PT on its own. Your LST payout uses the maturity index.'}
+        </p>
+      </section>
+      <form
+        className="trade-panel"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <div className="panel-heading">
+          <span className="token-symbol pt-symbol">
+            <Split size={17} />
+          </span>
+          <div>
+            <h2>
               {mode === 'mint'
-                ? 'Deposit LST'
-                : mode === 'redeem_py'
-                ? 'Equal Amount of PT & YT to Burn'
-                : 'Matured PT to Redeem'}
-            </span>
-            <span className="flex items-center space-x-1">
-              <span>Available:</span>
-              <span className="text-slate-200 font-mono">
-                {mode === 'mint'
-                  ? formatUnits(lstBalance, 4)
-                  : mode === 'redeem_py'
-                  ? `${formatUnits(userPosition?.pt_balance, 2)} PT / ${formatUnits(userPosition?.yt_balance, 2)} YT`
-                  : `${formatUnits(userPosition?.pt_balance, 2)} PT`}
-              </span>
-              <button
-                onClick={handleMax}
-                className="text-cyan-400 hover:text-cyan-300 ml-1 font-bold underline"
-              >
-                MAX
-              </button>
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <input
-              type="number"
-              min="0"
-              step="any"
-              placeholder="0.0"
-              value={amountInput}
-              onChange={(e) => setAmountInput(e.target.value)}
-              className="bg-transparent text-2xl sm:text-3xl font-mono font-bold text-white focus:outline-none w-2/3"
-            />
-            <span className="font-bold text-sm bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-              {mode === 'mint' ? selectedMarket.symbol : 'PT'}
-            </span>
+                ? 'Mint PT + YT'
+                : 'Redeem for LST'}
+            </h2>
+            <p>
+              {selectedMarket.symbol} · {selectedMarket.maturityFormatted}
+            </p>
           </div>
         </div>
-
-        {/* Visual Token Breakdown */}
-        {mode === 'mint' ? (
-          <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-800/30 mb-6 space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Tokenization Rate (py_index)</span>
-              <span className="font-mono text-cyan-300 font-bold">{pyIndexFormatted} NEAR</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
-              <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold block">You Receive PT:</span>
-                <span className="text-lg font-mono font-bold text-cyan-400">{expectedMintTokens} PT</span>
-                <span className="text-[11px] text-slate-500 block">Redeems for principal</span>
-              </div>
-              <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800">
-                <span className="text-xs text-slate-400 font-semibold block">You Receive YT:</span>
-                <span className="text-lg font-mono font-bold text-emerald-400">{expectedMintTokens} YT</span>
-                <span className="text-[11px] text-slate-500 block">Collects staking yield</span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 mb-6 flex items-center justify-between">
-            <div>
-              <span className="text-xs text-slate-400 font-semibold block">Expected LST Payout:</span>
-              <span className="text-2xl font-mono font-bold text-emerald-400">
-                {expectedRedeemLST} {selectedMarket.symbol}
+        <div className="segmented three-segments">
+          {(['mint', 'redeem_py', 'redeem_pt'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={mode === value ? 'selected' : ''}
+              aria-pressed={mode === value}
+              onClick={() => {
+                setMode(value);
+                setAmount('');
+              }}
+            >
+              {value === 'mint'
+                ? 'Mint'
+                : value === 'redeem_py'
+                  ? 'PT + YT'
+                  : 'Matured PT'}
+            </button>
+          ))}
+        </div>
+        <AmountField
+          label={
+            mode === 'mint'
+              ? 'Deposit LST'
+              : mode === 'redeem_py'
+                ? 'Equal PT + YT to redeem'
+                : 'PT to redeem'
+          }
+          value={amount}
+          onChange={setAmount}
+          token={mode === 'mint' ? selectedMarket.symbol : 'PT'}
+          balance={
+            isConnected
+              ? balancesReady
+                ? formatUnits(balance, 6)
+                : '—'
+              : undefined
+          }
+          onMax={
+            balancesReady
+              ? () => setAmount(formatUnits(balance, 24))
+              : undefined
+          }
+        />
+        <div className="mint-output">
+          <span className="eyebrow">ESTIMATED RECEIVE</span>
+          {mode === 'mint' ? (
+            <div className="mint-split-values">
+              <span>
+                <TokenArtwork kind="pt" size={32} />
+                <b>{expected === null ? '—' : formatUnits(expected, 6)}</b> PT
+              </span>
+              <span className="muted">+</span>
+              <span className="yield-ink">
+                <TokenArtwork kind="yt" size={32} />
+                <b>{expected === null ? '—' : formatUnits(expected, 6)}</b> YT
               </span>
             </div>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-          </div>
+          ) : (
+            <strong>
+              {expected === null ? '—' : formatUnits(expected, 6)}{' '}
+              <small>{selectedMarket.symbol}</small>
+            </strong>
+          )}
+        </div>
+        <div className="trade-summary">
+          <SummaryRow
+            label={mode === 'redeem_pt' ? 'Maturity index' : 'Staking index'}
+          >
+            {index > 0n ? formatIndex(index.toString()) : '—'} NEAR
+          </SummaryRow>
+          <SummaryRow label="Maturity">
+            {selectedMarket.maturityFormatted}
+          </SummaryRow>
+          <SummaryRow label="Rounding">
+            Down to the smallest token unit
+          </SummaryRow>
+        </div>
+        {insufficient && (
+          <FormNotice error>
+            Insufficient{' '}
+            {mode === 'mint'
+              ? selectedMarket.symbol
+              : mode === 'redeem_py'
+                ? 'paired PT and YT'
+                : 'PT'}{' '}
+            balance.
+          </FormNotice>
         )}
-
-        {/* Action Button */}
-        <button
-          onClick={handleAction}
-          disabled={parseFloat(amountInput) <= 0}
-          className="w-full py-4 rounded-2xl font-extrabold text-base bg-gradient-to-r from-cyan-500 to-emerald-400 hover:from-cyan-400 hover:to-emerald-300 text-slate-950 shadow-xl shadow-cyan-500/20 active:scale-[0.98] transition disabled:opacity-40"
+        {blocked && (
+          <FormNotice>
+            {mode === 'redeem_pt'
+              ? 'PT-only redemption opens after maturity. You can redeem paired PT + YT now.'
+              : 'Minting requires an active, unpaused market. Redemptions remain available.'}
+          </FormNotice>
+        )}
+        <ActionButton
+          busy={busy}
+          disabled={
+            isConnected &&
+            (input <= 0n ||
+              insufficient ||
+              !!blocked ||
+              (mode === 'mint' && !balancesReady))
+          }
         >
           {!isConnected
-            ? 'Connect Wallet'
-            : mode === 'mint'
-            ? `Mint ${expectedMintTokens} PT + YT`
-            : mode === 'redeem_py'
-            ? `Redeem for ${expectedRedeemLST} ${selectedMarket.symbol}`
-            : 'Redeem Matured PT'}
-        </button>
-      </div>
+            ? 'Connect wallet'
+            : input <= 0n
+              ? 'Enter an amount'
+              : mode === 'mint'
+                ? 'Mint PT + YT'
+                : 'Redeem for LST'}
+        </ActionButton>
+        <p className="panel-footnote">
+          You approve each transaction in your wallet.
+        </p>
+      </form>
+      <a
+        className="text-link tokenize-portfolio"
+        href={`#/app/portfolio?market=${selectedMarket.id}`}
+      >
+        See your token balances <ArrowRight size={14} />
+      </a>
     </div>
   );
-};
+}

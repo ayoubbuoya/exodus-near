@@ -54,7 +54,8 @@ export interface MarketHistoryPoint {
   tvl_near: number;
 }
 
-export type ActiveTab = 'fix' | 'long' | 'pool' | 'mint-redeem' | 'portfolio' | 'intents';
+export type ActiveTab =
+  'fix' | 'long' | 'pool' | 'mint-redeem' | 'portfolio' | 'intents';
 
 export interface OneClickToken {
   assetId: string;
