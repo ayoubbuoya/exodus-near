@@ -11,6 +11,6 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["Ayoub"]
+authors = ["Ayoub Amer", "Farouk Allani", "Nadhir Abellatif"]
 license = "MIT"
 readme = "README.md"

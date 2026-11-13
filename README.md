@@ -21,7 +21,8 @@
 5. [How it works](#5-how-it-works)
 6. [Repository layout](#6-repository-layout)
 7. [Known limitations](#7-known-limitations)
-8. [License](#8-license)
+8. [Team](#8-team)
+9. [License](#9-license)
 
 ---
 
@@ -242,6 +243,16 @@ cargo near build non-reproducible-wasm --no-abi --manifest-path contracts/market
 
 ---
 
-## 8. License
+## 8. Team
 
-[MIT](LICENSE) © 2026 Ayoub
+| Name | GitHub | Role |
+| :--- | :--- | :--- |
+| Nadhir Abellatif | [@NaDasai](https://github.com/NaDasai) | Team lead |
+| Ayoub Amer | [@ayoubbuoya](https://github.com/ayoubbuoya) | Smart contracts & backend |
+| Farouk Allani | [@farouk-allani](https://github.com/farouk-allani) | Frontend |
+
+---
+
+## 9. License
+
+[MIT](LICENSE) © 2026 Ayoub Amer, Farouk Allani, Nadhir Abellatif
